@@ -1,0 +1,70 @@
+name: Android Build & Release
+
+on:
+  push:
+    branches:
+      - '**'
+
+jobs:
+  build:
+    name: Build APK and publish release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.4'
+          cache-read-only: false
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Download Gradle wrapper JAR
+        run: |
+          mkdir -p gradle/wrapper
+          curl -fsSL -o gradle/wrapper/gradle-wrapper.jar \
+            https://raw.githubusercontent.com/gradle/gradle/v8.4.0/gradle/wrapper/gradle-wrapper.jar
+
+      - name: Build debug APK
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Rename APK with build info
+        id: apk
+        run: |
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          BRANCH=$(echo "${GITHUB_REF_NAME}" | sed 's/[^a-zA-Z0-9_.-]/-/g')
+          APK_NAME="lost-and-found-build${{ github.run_number }}-${BRANCH}-${SHORT_SHA}.apk"
+          mv app/build/outputs/apk/debug/app-debug.apk "app/build/outputs/apk/debug/${APK_NAME}"
+          echo "apk_name=${APK_NAME}" >> "$GITHUB_OUTPUT"
+          echo "short_sha=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: "Build #${{ github.run_number }} (${{ steps.apk.outputs.short_sha }}) — ${{ github.ref_name }}"
+          body: |
+            ## Automated build
+
+            | Field | Value |
+            |---|---|
+            | Branch | `${{ github.ref_name }}` |
+            | Commit | `${{ github.sha }}` |
+            | Build number | `${{ github.run_number }}` |
+            | Triggered by | `${{ github.actor }}` |
+
+            **Download the APK below and install it on your Android device (API 21+).**
+          files: app/build/outputs/apk/debug/${{ steps.apk.outputs.apk_name }}
+          prerelease: ${{ github.ref_name != 'main' && github.ref_name != 'master' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
