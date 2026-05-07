@@ -2,6 +2,9 @@
 <resources>
     <string name="app_name">College Lost &amp; Found</string>
 
+    <!-- Google Sign-In web client ID (replace with actual value from google-services.json) -->
+    <string name="default_web_client_id">123456789-placeholder.apps.googleusercontent.com</string>
+
     <!-- Auth -->
     <string name="sign_in_with_google">Sign in with Google</string>
     <string name="login_title">Welcome Back</string>
