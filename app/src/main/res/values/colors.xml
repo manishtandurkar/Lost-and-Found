@@ -1,5 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
+    <color name="primary">#1A237E</color>
+    <color name="primary_dark">#000051</color>
+    <color name="primary_light">#534BAE</color>
+    <color name="accent">#FF6F00</color>
+
+    <color name="lost_color">#D32F2F</color>
+    <color name="found_color">#388E3C</color>
+    <color name="lost_bg">#FFEBEE</color>
+    <color name="found_bg">#E8F5E9</color>
+
+    <color name="text_primary">#212121</color>
+    <color name="text_secondary">#757575</color>
+    <color name="divider">#E0E0E0</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+
+    <color name="purple_200">#FFBB86FC</color>
+    <color name="purple_500">#FF6200EE</color>
+    <color name="purple_700">#FF3700B3</color>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="teal_700">#FF018786</color>
 </resources>
