@@ -4,7 +4,8 @@
       "PowerShell(java -version 2>&1)",
       "PowerShell($env:JAVA_HOME)",
       "PowerShell(Invoke-WebRequest -Uri \"https://github.com/gradle/gradle/raw/v8.4.0/gradle/wrapper/gradle-wrapper.jar\" -OutFile \"c:\\\\Projects\\\\App_dev\\\\EL\\\\Project\\\\gradle\\\\wrapper\\\\gradle-wrapper.jar\" -UseBasicParsing; Write-Output \"Downloaded: $\\(\\(Get-Item 'c:\\\\Projects\\\\App_dev\\\\EL\\\\Project\\\\gradle\\\\wrapper\\\\gradle-wrapper.jar'\\).Length\\) bytes\")",
-      "PowerShell($env:JAVA_HOME = \"C:\\\\Users\\\\Manis\\\\.jdks\\\\jbr-17.0.14\"; Set-Location \"c:\\\\Projects\\\\App_dev\\\\EL\\\\Project\"; & \".\\\\gradlew.bat\" assembleDebug 2>&1)"
+      "PowerShell($env:JAVA_HOME = \"C:\\\\Users\\\\Manis\\\\.jdks\\\\jbr-17.0.14\"; Set-Location \"c:\\\\Projects\\\\App_dev\\\\EL\\\\Project\"; & \".\\\\gradlew.bat\" assembleDebug 2>&1)",
+      "Bash(./gradlew assembleDebug --no-daemon)"
     ]
   }
 }
