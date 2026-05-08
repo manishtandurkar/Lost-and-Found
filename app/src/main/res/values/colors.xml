@@ -1,51 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Primary colors - Deep Blue for college branding -->
-    <color name="primary">#1A237E</color>
-    <color name="primary_dark">#0D1757</color>
-    <color name="primary_light">#534BAE</color>
-    <color name="primary_variant">#283593</color>
-    <color name="on_primary">#FFFFFF</color>
-
-    <!-- Secondary colors -->
-    <color name="secondary">#1565C0</color>
-    <color name="secondary_variant">#003c8f</color>
-    <color name="on_secondary">#FFFFFF</color>
-
-    <!-- Surface and Background -->
-    <color name="background">#F5F5F5</color>
-    <color name="surface">#FFFFFF</color>
-    <color name="on_background">#1C1B1F</color>
-    <color name="on_surface">#1C1B1F</color>
-
-    <!-- Lost item indicator - Red -->
-    <color name="lost_red">#D32F2F</color>
-    <color name="lost_red_light">#FFCDD2</color>
-    <color name="lost_red_dark">#B71C1C</color>
-
-    <!-- Found item indicator - Green -->
-    <color name="found_green">#2E7D32</color>
-    <color name="found_green_light">#C8E6C9</color>
-    <color name="found_green_dark">#1B5E20</color>
-
-    <!-- Status colors -->
-    <color name="status_active">#4CAF50</color>
-    <color name="status_resolved">#9E9E9E</color>
-    <color name="status_pending">#FF9800</color>
-
-    <!-- Text colors -->
-    <color name="text_primary">#212121</color>
-    <color name="text_secondary">#757575</color>
-    <color name="text_hint">#BDBDBD</color>
-    <color name="text_on_primary">#FFFFFF</color>
-
-    <!-- Other UI colors -->
-    <color name="divider">#E0E0E0</color>
-    <color name="card_background">#FFFFFF</color>
-    <color name="fab_color">#1A237E</color>
-    <color name="error">#B00020</color>
-    <color name="white">#FFFFFF</color>
-    <color name="black">#000000</color>
-    <color name="transparent">#00000000</color>
-    <color name="overlay">#80000000</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
 </resources>
