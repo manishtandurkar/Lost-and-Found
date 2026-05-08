@@ -24,52 +24,52 @@ jobs:
 
       - name: Create google-services.json placeholder
         run: |
-          cat > app/google-services.json << 'EOF'
-          {
-            "project_info": {
-              "project_number": "000000000000",
-              "project_id": "lost-and-found-placeholder",
-              "storage_bucket": "lost-and-found-placeholder.appspot.com"
-            },
-            "client": [
-              {
-                "client_info": {
-                  "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
-                  "android_client_info": {
-                    "package_name": "com.example.lostandfound"
-                  }
-                },
-                "oauth_client": [
-                  {
-                    "client_id": "000000000000-placeholder.apps.googleusercontent.com",
-                    "client_type": 3
-                  }
-                ],
-                "api_key": [
-                  {
-                    "current_key": "PLACEHOLDER_API_KEY"
-                  }
-                ],
-                "services": {
-                  "appinvite_service": {
-                    "other_platform_oauth_client": []
-                  }
-                }
-              }
-            ],
-            "configuration_version": "1"
-          }
-          EOF
+          cat > app/google-services.json <<'GSJSON'
+{
+  "project_info": {
+    "project_number": "000000000000",
+    "project_id": "lost-and-found-placeholder",
+    "storage_bucket": "lost-and-found-placeholder.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
+        "android_client_info": {
+          "package_name": "com.example.lostandfound"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "000000000000-placeholder.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "PLACEHOLDER_API_KEY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
+GSJSON
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --no-daemon
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
         env:
-          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx2048m"
+          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8"
 
-      - name: Upload APK artifact
+      - name: Upload Debug APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: lost-and-found-debug
@@ -95,42 +95,42 @@ jobs:
 
       - name: Create google-services.json placeholder
         run: |
-          cat > app/google-services.json << 'EOF'
-          {
-            "project_info": {
-              "project_number": "000000000000",
-              "project_id": "lost-and-found-placeholder",
-              "storage_bucket": "lost-and-found-placeholder.appspot.com"
-            },
-            "client": [
-              {
-                "client_info": {
-                  "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
-                  "android_client_info": {
-                    "package_name": "com.example.lostandfound"
-                  }
-                },
-                "oauth_client": [
-                  {
-                    "client_id": "000000000000-placeholder.apps.googleusercontent.com",
-                    "client_type": 3
-                  }
-                ],
-                "api_key": [
-                  {
-                    "current_key": "PLACEHOLDER_API_KEY"
-                  }
-                ],
-                "services": {
-                  "appinvite_service": {
-                    "other_platform_oauth_client": []
-                  }
-                }
-              }
-            ],
-            "configuration_version": "1"
-          }
-          EOF
+          cat > app/google-services.json <<'GSJSON'
+{
+  "project_info": {
+    "project_number": "000000000000",
+    "project_id": "lost-and-found-placeholder",
+    "storage_bucket": "lost-and-found-placeholder.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
+        "android_client_info": {
+          "package_name": "com.example.lostandfound"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "000000000000-placeholder.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "PLACEHOLDER_API_KEY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
+GSJSON
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
@@ -138,14 +138,14 @@ jobs:
       - name: Build Release APK
         run: ./gradlew assembleRelease --no-daemon
         env:
-          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx2048m"
+          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8"
 
-      - name: Get version name
+      - name: Get version info
         id: version
         run: |
-          VERSION=$(grep 'versionName' app/build.gradle.kts | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          VERSION=$(grep 'versionName' app/build.gradle.kts | head -1 | sed 's/.*= *"\(.*\)".*/\1/')
           echo "VERSION_NAME=$VERSION" >> $GITHUB_OUTPUT
-          echo "TAG=v$VERSION-$(date +'%Y%m%d%H%M%S')" >> $GITHUB_OUTPUT
+          echo "TAG=v${VERSION}-$(date +'%Y%m%d%H%M%S')" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -155,18 +155,17 @@ jobs:
           body: |
             ## Lost & Found Android App
 
-            ### What's included
+            ### Features
             - Google Sign-In with college domain restriction
             - Real-time Firebase feed for lost/found items
             - Offline support via Room SQLite cache
-            - Google Maps integration for item location
+            - Google Maps for item locations
             - In-app chat between users
             - Push notifications via Firebase Cloud Messaging
             - Smart category-based item matching
 
             > **Note:** This build uses a placeholder `google-services.json`.
-            > To use this app you must provide your own Firebase project credentials.
-
+            > Replace it with your real Firebase credentials before using the app.
           files: app/build/outputs/apk/release/app-release-unsigned.apk
           draft: false
           prerelease: false
