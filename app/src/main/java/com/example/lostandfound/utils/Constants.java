@@ -26,7 +26,7 @@ public class Constants {
             "Electronics", "Accessories", "Books", "ID Card", "Clothing", "Bag", "Other"
     };
 
-    public static final String COLLEGE_DOMAIN = "college.edu";
+    public static final String COLLEGE_DOMAIN = "rvce.edu.in";
 
     public static final String EXTRA_ITEM_ID = "item_id";
     public static final String EXTRA_ITEM_TYPE = "item_type";

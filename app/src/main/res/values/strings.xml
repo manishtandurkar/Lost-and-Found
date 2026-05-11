@@ -1,6 +1,5 @@
 <resources>
     <string name="app_name">Lost &amp; Found</string>
     <string name="tagline">Your campus recovery hub</string>
-    <string name="default_web_client_id">REPLACE_WITH_WEB_CLIENT_ID</string>
     <string name="google_maps_key">YOUR_GOOGLE_MAPS_API_KEY_HERE</string>
 </resources>
