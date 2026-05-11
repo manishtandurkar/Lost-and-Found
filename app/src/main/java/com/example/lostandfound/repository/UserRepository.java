@@ -17,14 +17,11 @@ public class UserRepository {
     }
 
     public void createOrUpdateUser(User user, Callback callback) {
-        android.util.Log.d("UserRepository", "Writing user to DB: " + user.getUserId());
         usersRef.child(user.getUserId()).setValue(user)
                 .addOnSuccessListener(unused -> {
-                    android.util.Log.d("UserRepository", "DB write success");
                     if (callback != null) callback.onSuccess();
                 })
                 .addOnFailureListener(e -> {
-                    android.util.Log.e("UserRepository", "DB write failed: " + e.getMessage());
                     if (callback != null) callback.onError(e.getMessage());
                 });
     }

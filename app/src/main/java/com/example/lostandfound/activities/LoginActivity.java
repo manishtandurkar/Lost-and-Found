@@ -101,7 +101,8 @@ public class LoginActivity extends AppCompatActivity {
                         }
                     } else {
                         progressBar.setVisibility(View.GONE);
-                        Snackbar.make(rootView, "Authentication failed.", Snackbar.LENGTH_LONG).show();
+                        String err = task.getException() != null ? task.getException().getMessage() : "unknown";
+                        Snackbar.make(rootView, "Authentication failed: " + err, Snackbar.LENGTH_LONG).show();
                     }
                 });
     }
