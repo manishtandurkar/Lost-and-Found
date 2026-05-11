@@ -39,7 +39,12 @@ jobs:
                       "package_name": "com.example.lostandfound"
                     }
                   },
-                  "oauth_client": [],
+                  "oauth_client": [
+                    {
+                      "client_id": "000000000000-placeholder.apps.googleusercontent.com",
+                      "client_type": 3
+                    }
+                  ],
                   "api_key": [
                     {
                       "current_key": "PLACEHOLDER_API_KEY"
@@ -107,7 +112,12 @@ jobs:
                       "package_name": "com.example.lostandfound"
                     }
                   },
-                  "oauth_client": [],
+                  "oauth_client": [
+                    {
+                      "client_id": "000000000000-placeholder.apps.googleusercontent.com",
+                      "client_type": 3
+                    }
+                  ],
                   "api_key": [
                     {
                       "current_key": "PLACEHOLDER_API_KEY"
