@@ -20,7 +20,7 @@ public class ChatRepository {
     private String activeChatId;
 
     public ChatRepository() {
-        chatsRef = FirebaseDatabase.getInstance().getReference(Constants.DB_CHATS);
+        chatsRef = FirebaseDatabase.getInstance("https://lost-and-found-d65bc-default-rtdb.firebaseio.com").getReference(Constants.DB_CHATS);
     }
 
     public String getOrCreateChatId(String userId1, String userId2, String itemId) {

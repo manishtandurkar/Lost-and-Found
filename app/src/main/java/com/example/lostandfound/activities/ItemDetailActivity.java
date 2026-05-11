@@ -135,7 +135,7 @@ public class ItemDetailActivity extends AppCompatActivity {
         boolean isOwner = myId != null && myId.equals(item.getPostedBy());
 
         // Fetch poster name
-        FirebaseDatabase.getInstance().getReference(Constants.DB_USERS)
+        FirebaseDatabase.getInstance("https://lost-and-found-d65bc-default-rtdb.firebaseio.com").getReference(Constants.DB_USERS)
                 .child(item.getPostedBy()).addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
                     public void onDataChange(DataSnapshot snapshot) {

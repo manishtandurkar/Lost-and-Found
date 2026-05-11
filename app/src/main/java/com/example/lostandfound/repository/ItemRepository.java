@@ -32,7 +32,7 @@ public class ItemRepository {
     private final Executor executor;
 
     public ItemRepository(Context context) {
-        dbRef = FirebaseDatabase.getInstance().getReference();
+        dbRef = FirebaseDatabase.getInstance("https://lost-and-found-d65bc-default-rtdb.firebaseio.com").getReference();
         storageRef = FirebaseStorage.getInstance().getReference("item_photos");
         itemDao = AppDatabase.getInstance(context).itemDao();
         executor = Executors.newSingleThreadExecutor();

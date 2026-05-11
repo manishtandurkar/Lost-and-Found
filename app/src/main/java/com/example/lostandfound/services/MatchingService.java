@@ -36,7 +36,7 @@ public class MatchingService extends Service {
             return START_NOT_STICKY;
         }
 
-        dbRef = FirebaseDatabase.getInstance().getReference();
+        dbRef = FirebaseDatabase.getInstance("https://lost-and-found-d65bc-default-rtdb.firebaseio.com").getReference();
 
         String sourceNode = newItemType.equals(Constants.TYPE_FOUND)
                 ? Constants.DB_FOUND_ITEMS : Constants.DB_LOST_ITEMS;
