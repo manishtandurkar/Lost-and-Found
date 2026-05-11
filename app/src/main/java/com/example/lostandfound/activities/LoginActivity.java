@@ -74,7 +74,7 @@ public class LoginActivity extends AppCompatActivity {
                 handleSignInResult(account);
             } catch (ApiException e) {
                 progressBar.setVisibility(View.GONE);
-                Snackbar.make(rootView, "Sign-in failed: " + e.getMessage(), Snackbar.LENGTH_LONG).show();
+                Snackbar.make(rootView, "Sign-in failed (code " + e.getStatusCode() + "): " + e.getMessage(), Snackbar.LENGTH_LONG).show();
             }
         }
     }
