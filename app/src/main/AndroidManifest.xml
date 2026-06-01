@@ -48,15 +48,18 @@
 
         <activity
             android:name=".activities.ReportLostActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:theme="@style/Theme.LostAndFound.Child" />
 
         <activity
             android:name=".activities.ReportFoundActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:theme="@style/Theme.LostAndFound.Child" />
 
         <activity
             android:name=".activities.ItemDetailActivity"
-            android:exported="true">
+            android:exported="true"
+            android:theme="@style/Theme.LostAndFound.Child">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -66,19 +69,23 @@
 
         <activity
             android:name=".activities.MapActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:theme="@style/Theme.LostAndFound.Child" />
 
         <activity
             android:name=".activities.ChatActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:theme="@style/Theme.LostAndFound.Child" />
 
         <activity
             android:name=".activities.MyPostsActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:theme="@style/Theme.LostAndFound.Child" />
 
         <activity
             android:name=".activities.NotificationActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:theme="@style/Theme.LostAndFound.Child" />
 
         <service
             android:name=".services.MatchingService"
