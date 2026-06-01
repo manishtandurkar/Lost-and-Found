@@ -17,6 +17,13 @@ import com.example.lostandfound.models.Item;
 import com.example.lostandfound.repository.ItemRepository;
 import com.example.lostandfound.utils.Constants;
 import com.example.lostandfound.utils.SessionManager;
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.firebase.database.DataSnapshot;
@@ -28,16 +35,17 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
-public class ItemDetailActivity extends AppCompatActivity {
+public class ItemDetailActivity extends AppCompatActivity implements OnMapReadyCallback {
 
     private ItemRepository itemRepository;
     private SessionManager sessionManager;
     private Item currentItem;
     private String itemId, itemType;
+    private GoogleMap googleMap;
 
     private ImageView imgPhoto;
     private TextView tvTitle, tvCategory, tvDescription, tvLocation, tvDate, tvStatus, tvPostedBy, tvType;
-    private MaterialButton btnContact, btnResolve;
+    private MaterialButton btnContact, btnResolve, btnShare;
     private ProgressBar progressBar;
     private View rootView;
 
@@ -64,6 +72,12 @@ public class ItemDetailActivity extends AppCompatActivity {
 
         bindViews();
 
+        SupportMapFragment mapFragment = (SupportMapFragment)
+                getSupportFragmentManager().findFragmentById(R.id.mapDetail);
+        if (mapFragment != null) {
+            mapFragment.getMapAsync(this);
+        }
+
         if (itemId != null && itemType != null) {
             loadItem();
         } else {
@@ -84,6 +98,7 @@ public class ItemDetailActivity extends AppCompatActivity {
         tvType = findViewById(R.id.tvDetailType);
         btnContact = findViewById(R.id.btnContact);
         btnResolve = findViewById(R.id.btnMarkResolved);
+        btnShare = findViewById(R.id.btnShare);
         progressBar = findViewById(R.id.progressBarDetail);
     }
 
@@ -164,6 +179,40 @@ public class ItemDetailActivity extends AppCompatActivity {
             btnResolve.setVisibility(View.GONE);
             btnContact.setOnClickListener(v -> openChat(item, myId));
         }
+        updateMapPin();
+        btnShare.setOnClickListener(v -> shareItemDetails());
+    }
+
+    @Override
+    public void onMapReady(GoogleMap map) {
+        this.googleMap = map;
+        updateMapPin();
+    }
+
+    private void updateMapPin() {
+        if (googleMap == null || currentItem == null) return;
+        if (currentItem.getLatitude() == 0 && currentItem.getLongitude() == 0) {
+            View mapFragmentView = findViewById(R.id.mapDetail);
+            if (mapFragmentView != null) {
+                mapFragmentView.setVisibility(View.GONE);
+            }
+            return;
+        }
+
+        LatLng pos = new LatLng(currentItem.getLatitude(), currentItem.getLongitude());
+        float color = Constants.TYPE_LOST.equals(currentItem.getType())
+                ? BitmapDescriptorFactory.HUE_RED
+                : BitmapDescriptorFactory.HUE_GREEN;
+
+        googleMap.clear();
+        googleMap.addMarker(new MarkerOptions()
+                .position(pos)
+                .title(currentItem.getTitle())
+                .snippet(currentItem.getLocationName())
+                .icon(BitmapDescriptorFactory.defaultMarker(color)));
+
+        googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(pos, 15f));
+        googleMap.getUiSettings().setAllGesturesEnabled(false);
     }
 
     private void openChat(Item item, String myId) {
@@ -173,6 +222,26 @@ public class ItemDetailActivity extends AppCompatActivity {
         intent.putExtra(Constants.EXTRA_ITEM_TYPE, item.getType());
         intent.putExtra(Constants.EXTRA_OTHER_USER_ID, item.getPostedBy());
         startActivity(intent);
+    }
+
+    private void shareItemDetails() {
+        if (currentItem == null) return;
+
+        String typeLabel = Constants.TYPE_LOST.equals(currentItem.getType()) ? "LOST" : "FOUND";
+        String shareText = "📢 *" + typeLabel + " ITEM ALERT* 📢\n\n"
+                + "*Title:* " + currentItem.getTitle() + "\n"
+                + "*Category:* " + currentItem.getCategory() + "\n"
+                + "*Location:* " + currentItem.getLocationName() + "\n"
+                + "*Description:* " + currentItem.getDescription() + "\n\n"
+                + "Help recover this item by checking the Campus Lost & Found Hub! 🎓";
+
+        Intent sendIntent = new Intent();
+        sendIntent.setAction(Intent.ACTION_SEND);
+        sendIntent.putExtra(Intent.EXTRA_TEXT, shareText);
+        sendIntent.setType("text/plain");
+
+        Intent shareIntent = Intent.createChooser(sendIntent, "Share Item Details via");
+        startActivity(shareIntent);
     }
 
     @Override

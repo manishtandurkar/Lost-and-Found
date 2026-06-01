@@ -45,6 +45,7 @@ public class MainActivity extends AppCompatActivity {
     private ProgressBar progressBar;
     private TextView tvOfflineBanner, tvEmptyState;
     private String currentFilter = Constants.FILTER_ALL;
+    private String searchQuery = "";
     private List<ItemEntity> allItems = new ArrayList<>();
 
     @Override
@@ -73,6 +74,25 @@ public class MainActivity extends AppCompatActivity {
         tvOfflineBanner = findViewById(R.id.tvOfflineBanner);
         tvEmptyState = findViewById(R.id.tvEmptyState);
         ChipGroup chipGroup = findViewById(R.id.chipGroupFilter);
+        androidx.appcompat.widget.SearchView searchView = findViewById(R.id.searchView);
+
+        if (searchView != null) {
+            searchView.setOnQueryTextListener(new androidx.appcompat.widget.SearchView.OnQueryTextListener() {
+                @Override
+                public boolean onQueryTextSubmit(String query) {
+                    searchQuery = query != null ? query.trim().toLowerCase() : "";
+                    applyFilter();
+                    return true;
+                }
+
+                @Override
+                public boolean onQueryTextChange(String newText) {
+                    searchQuery = newText != null ? newText.trim().toLowerCase() : "";
+                    applyFilter();
+                    return true;
+                }
+            });
+        }
 
         adapter = new ItemAdapter(item -> openItemDetail(item));
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -137,6 +157,14 @@ public class MainActivity extends AppCompatActivity {
                 break;
             default:
                 filtered = allItems;
+        }
+
+        if (!searchQuery.isEmpty()) {
+            filtered = filtered.stream()
+                    .filter(i -> (i.title != null && i.title.toLowerCase().contains(searchQuery))
+                            || (i.category != null && i.category.toLowerCase().contains(searchQuery))
+                            || (i.description != null && i.description.toLowerCase().contains(searchQuery)))
+                    .collect(Collectors.toList());
         }
 
         adapter.setItems(filtered);
