@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.example.lostandfound.R;
 import com.example.lostandfound.database.ItemEntity;
+import com.google.android.material.appbar.MaterialToolbar;
 import com.example.lostandfound.utils.Constants;
 import com.example.lostandfound.viewmodels.FeedViewModel;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -33,6 +34,8 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_map);
 
+        MaterialToolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         setTitle("Item Map");
 

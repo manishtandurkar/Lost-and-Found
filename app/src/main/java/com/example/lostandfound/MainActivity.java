@@ -32,6 +32,7 @@ import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
+import androidx.annotation.NonNull;
 import com.google.firebase.auth.FirebaseAuth;
 
 import java.util.ArrayList;
@@ -69,7 +70,15 @@ public class MainActivity extends AppCompatActivity {
         observeData();
 
         if (NetworkUtils.isNetworkAvailable(this)) {
-            feedViewModel.syncFromFirebase();
+            FirebaseAuth.getInstance().addAuthStateListener(new FirebaseAuth.AuthStateListener() {
+                @Override
+                public void onAuthStateChanged(@NonNull FirebaseAuth auth) {
+                    if (auth.getCurrentUser() != null) {
+                        auth.removeAuthStateListener(this);
+                        feedViewModel.syncFromFirebase();
+                    }
+                }
+            });
         } else {
             tvOfflineBanner.setVisibility(View.VISIBLE);
         }
@@ -185,6 +194,13 @@ public class MainActivity extends AppCompatActivity {
         startActivity(intent);
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        BottomNavigationView bottomNav = findViewById(R.id.bottomNav);
+        bottomNav.setSelectedItemId(R.id.nav_feed);
+    }
+
     private void setupBottomNav() {
         BottomNavigationView bottomNav = findViewById(R.id.bottomNav);
         bottomNav.setOnItemSelectedListener(item -> {
@@ -207,21 +223,30 @@ public class MainActivity extends AppCompatActivity {
 
     private void setupFab() {
         FloatingActionButton fab = findViewById(R.id.fab);
-        fab.setOnClickListener(v -> showReportDialog());
+        fab.setOnClickListener(v -> {
+            android.util.Log.d("FAB_DEBUG", "FAB clicked");
+            showReportDialog();
+        });
     }
 
     private void showReportDialog() {
+        android.util.Log.d("FAB_DEBUG", "showReportDialog called");
         String[] options = {"Report Lost Item", "Report Found Item"};
-        new AlertDialog.Builder(this)
-                .setTitle("What do you want to report?")
-                .setItems(options, (dialog, which) -> {
-                    if (which == 0) {
-                        startActivity(new Intent(this, ReportLostActivity.class));
-                    } else {
-                        startActivity(new Intent(this, ReportFoundActivity.class));
-                    }
-                })
-                .show();
+        try {
+            new AlertDialog.Builder(this)
+                    .setTitle("What do you want to report?")
+                    .setItems(options, (dialog, which) -> {
+                        if (which == 0) {
+                            startActivity(new Intent(this, ReportLostActivity.class));
+                        } else {
+                            startActivity(new Intent(this, ReportFoundActivity.class));
+                        }
+                    })
+                    .show();
+            android.util.Log.d("FAB_DEBUG", "Dialog shown");
+        } catch (Exception e) {
+            android.util.Log.e("FAB_DEBUG", "Dialog failed: " + e.getMessage());
+        }
     }
 
     public void onSyncTriggered() {

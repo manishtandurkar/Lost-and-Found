@@ -49,12 +49,12 @@
         <activity
             android:name=".activities.ReportLostActivity"
             android:exported="false"
-            android:theme="@style/Theme.LostAndFound.Child" />
+            android:theme="@style/Theme.LostAndFound" />
 
         <activity
             android:name=".activities.ReportFoundActivity"
             android:exported="false"
-            android:theme="@style/Theme.LostAndFound.Child" />
+            android:theme="@style/Theme.LostAndFound" />
 
         <activity
             android:name=".activities.ItemDetailActivity"
@@ -70,7 +70,7 @@
         <activity
             android:name=".activities.MapActivity"
             android:exported="false"
-            android:theme="@style/Theme.LostAndFound.Child" />
+            android:theme="@style/Theme.LostAndFound" />
 
         <activity
             android:name=".activities.ChatActivity"
