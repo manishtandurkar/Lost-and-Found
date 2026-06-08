@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <group android:checkableBehavior="single">
+        <item
+            android:id="@+id/drawer_feed"
+            android:checked="true"
+            android:icon="@android:drawable/ic_menu_sort_by_size"
+            android:title="Home" />
+        <item
+            android:id="@+id/drawer_map"
+            android:icon="@android:drawable/ic_menu_mapmode"
+            android:title="Map" />
+        <item
+            android:id="@+id/drawer_my_posts"
+            android:icon="@android:drawable/ic_menu_my_calendar"
+            android:title="My Posts" />
+        <item
+            android:id="@+id/drawer_notifications"
+            android:icon="@android:drawable/ic_popup_reminder"
+            android:title="Notifications" />
+    </group>
+
+    <group>
+        <item
+            android:id="@+id/drawer_logout"
+            android:icon="@android:drawable/ic_lock_power_off"
+            android:title="Logout" />
+    </group>
+
+</menu>

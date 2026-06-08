@@ -3,4 +3,6 @@
     <string name="tagline">Your campus recovery hub</string>
     <string name="google_maps_key">AIzaSyCM5UYwTZC_0wBsiGlLTAX26I0Ptw86C_c</string>
     <string name="default_web_client_id">327701135728-7ead8h3ud6c9l69usr5oq1hslk1tq06k.apps.googleusercontent.com</string>
+    <string name="nav_open">Open navigation drawer</string>
+    <string name="nav_close">Close navigation drawer</string>
 </resources>

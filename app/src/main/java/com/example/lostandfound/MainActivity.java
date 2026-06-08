@@ -4,15 +4,20 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.view.GravityCompat;
 import androidx.core.view.WindowCompat;
+import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
 import com.example.lostandfound.activities.LoginActivity;
 import com.example.lostandfound.activities.MapActivity;
 import com.example.lostandfound.activities.MyPostsActivity;
@@ -26,12 +31,13 @@ import com.example.lostandfound.utils.NetworkUtils;
 import com.example.lostandfound.utils.SessionManager;
 import com.example.lostandfound.viewmodels.FeedViewModel;
 import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.card.MaterialCardView;
-import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.navigation.NavigationView;
 import com.google.android.material.snackbar.Snackbar;
 import androidx.annotation.NonNull;
 import com.google.firebase.auth.FirebaseAuth;
@@ -51,6 +57,7 @@ public class MainActivity extends AppCompatActivity {
     private String currentFilter = Constants.FILTER_ALL;
     private String searchQuery = "";
     private List<ItemEntity> allItems = new ArrayList<>();
+    private DrawerLayout drawerLayout;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -66,6 +73,7 @@ public class MainActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
 
         setupViews();
+        setupDrawer(toolbar);
         setupBottomNav();
         setupFab();
         observeData();
@@ -245,6 +253,57 @@ public class MainActivity extends AppCompatActivity {
         });
 
         sheet.show();
+    }
+
+    private void setupDrawer(MaterialToolbar toolbar) {
+        drawerLayout = findViewById(R.id.drawerLayout);
+        NavigationView navView = findViewById(R.id.navView);
+
+        ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
+                this, drawerLayout, toolbar, R.string.nav_open, R.string.nav_close);
+        drawerLayout.addDrawerListener(toggle);
+        toggle.syncState();
+
+        View header = navView.getHeaderView(0);
+        TextView tvName = header.findViewById(R.id.tvNavName);
+        TextView tvEmail = header.findViewById(R.id.tvNavEmail);
+        ImageView ivPhoto = header.findViewById(R.id.ivNavPhoto);
+
+        tvName.setText(sessionManager.getUserName());
+        tvEmail.setText(sessionManager.getUserEmail());
+
+        String photoUrl = sessionManager.getUserPhotoUrl();
+        if (photoUrl != null && !photoUrl.isEmpty()) {
+            Glide.with(this).load(photoUrl).circleCrop().into(ivPhoto);
+        }
+
+        navView.setNavigationItemSelectedListener(item -> {
+            int id = item.getItemId();
+            if (id == R.id.drawer_map) {
+                startActivity(new Intent(this, MapActivity.class));
+            } else if (id == R.id.drawer_my_posts) {
+                startActivity(new Intent(this, MyPostsActivity.class));
+            } else if (id == R.id.drawer_notifications) {
+                startActivity(new Intent(this, NotificationActivity.class));
+            } else if (id == R.id.drawer_logout) {
+                FirebaseAuth.getInstance().signOut();
+                sessionManager.clearSession();
+                Intent intent = new Intent(this, LoginActivity.class);
+                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                startActivity(intent);
+            }
+            drawerLayout.closeDrawer(GravityCompat.START);
+            return true;
+        });
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (drawerLayout != null && drawerLayout.isDrawerOpen(GravityCompat.START)) {
+            drawerLayout.closeDrawer(GravityCompat.START);
+        } else {
+            super.onBackPressed();
+        }
     }
 
     public void onSyncTriggered() {
