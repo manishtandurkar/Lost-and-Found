@@ -49,4 +49,9 @@ public class Constants {
     public static final int RC_IMAGE_PICK = 200;
     public static final int RC_IMAGE_CAPTURE = 201;
     public static final int RC_PLACE_PICKER = 202;
+    public static final int RC_MAP_LOCATION_PICKER = 203;
+
+    public static final String EXTRA_LAT = "extra_lat";
+    public static final String EXTRA_LNG = "extra_lng";
+    public static final String EXTRA_LOCATION_NAME = "extra_location_name";
 }

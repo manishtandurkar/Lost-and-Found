@@ -24,6 +24,7 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.firebase.database.DataSnapshot;
@@ -44,6 +45,7 @@ public class ItemDetailActivity extends AppCompatActivity implements OnMapReadyC
     private GoogleMap googleMap;
 
     private ImageView imgPhoto;
+    private View photoContainer;
     private TextView tvTitle, tvCategory, tvDescription, tvLocation, tvDate, tvStatus, tvPostedBy, tvType;
     private MaterialButton btnContact, btnResolve, btnShare;
     private ProgressBar progressBar;
@@ -54,7 +56,12 @@ public class ItemDetailActivity extends AppCompatActivity implements OnMapReadyC
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_item_detail);
 
-        if (getSupportActionBar() != null) getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        MaterialToolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+            getSupportActionBar().setTitle("Lost & Found");
+        }
 
         itemRepository = new ItemRepository(this);
         sessionManager = new SessionManager(this);
@@ -87,6 +94,7 @@ public class ItemDetailActivity extends AppCompatActivity implements OnMapReadyC
 
     private void bindViews() {
         rootView = findViewById(R.id.rootDetailLayout);
+        photoContainer = findViewById(R.id.photoContainer);
         imgPhoto = findViewById(R.id.imgDetailPhoto);
         tvTitle = findViewById(R.id.tvDetailTitle);
         tvCategory = findViewById(R.id.tvDetailCategory);
@@ -141,28 +149,35 @@ public class ItemDetailActivity extends AppCompatActivity implements OnMapReadyC
         tvType.setTextColor(getColor(isLost ? R.color.lost_color : R.color.found_color));
 
         if (item.getPhotoUrl() != null && !item.getPhotoUrl().isEmpty()) {
+            photoContainer.setVisibility(View.VISIBLE);
             Glide.with(this).load(item.getPhotoUrl())
                     .placeholder(R.drawable.ic_image_placeholder)
                     .into(imgPhoto);
+        } else {
+            photoContainer.setVisibility(View.GONE);
         }
 
         String myId = sessionManager.getUserId();
         boolean isOwner = myId != null && myId.equals(item.getPostedBy());
 
-        // Fetch poster name
-        FirebaseDatabase.getInstance("https://lost-and-found-d65bc-default-rtdb.firebaseio.com").getReference(Constants.DB_USERS)
-                .child(item.getPostedBy()).addListenerForSingleValueEvent(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(DataSnapshot snapshot) {
-                        String name = snapshot.child("name").getValue(String.class);
-                        tvPostedBy.setText("Posted by: " + (name != null ? name : "Unknown"));
-                    }
+        if (isOwner) {
+            String myName = sessionManager.getUserName();
+            tvPostedBy.setText("Posted by: " + (myName != null ? myName : "You"));
+        } else {
+            FirebaseDatabase.getInstance("https://lost-and-found-d65bc-default-rtdb.firebaseio.com").getReference(Constants.DB_USERS)
+                    .child(item.getPostedBy()).addListenerForSingleValueEvent(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(DataSnapshot snapshot) {
+                            String name = snapshot.child("name").getValue(String.class);
+                            tvPostedBy.setText("Posted by: " + (name != null ? name : "Unknown"));
+                        }
 
-                    @Override
-                    public void onCancelled(DatabaseError error) {
-                        tvPostedBy.setText("Posted by: Unknown");
-                    }
-                });
+                        @Override
+                        public void onCancelled(DatabaseError error) {
+                            tvPostedBy.setText("Posted by: Unknown");
+                        }
+                    });
+        }
 
         if (isOwner) {
             btnContact.setVisibility(View.GONE);

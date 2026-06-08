@@ -93,7 +93,7 @@ public class ReportFoundActivity extends AppCompatActivity {
 
     private void setupCategoryDropdown() {
         ArrayAdapter<String> adapter = new ArrayAdapter<>(
-                this, android.R.layout.simple_dropdown_item_1line, Constants.CATEGORIES);
+                this, R.layout.item_dropdown, Constants.CATEGORIES);
         spinnerCategory.setAdapter(adapter);
     }
 

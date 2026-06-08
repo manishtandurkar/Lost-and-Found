@@ -46,9 +46,12 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         if (mapFragment != null) mapFragment.getMapAsync(this);
     }
 
+    private static final LatLng RVCE = new LatLng(12.9231, 77.4987);
+
     @Override
     public void onMapReady(GoogleMap map) {
         googleMap = map;
+        googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(RVCE, 15));
 
         googleMap.setOnMarkerClickListener(marker -> {
             ItemEntity item = markerItemMap.get(marker);

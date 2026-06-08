@@ -7,7 +7,6 @@ import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.WindowCompat;
 import androidx.lifecycle.ViewModelProvider;
@@ -27,6 +26,8 @@ import com.example.lostandfound.utils.NetworkUtils;
 import com.example.lostandfound.utils.SessionManager;
 import com.example.lostandfound.viewmodels.FeedViewModel;
 import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
+import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
@@ -223,30 +224,27 @@ public class MainActivity extends AppCompatActivity {
 
     private void setupFab() {
         FloatingActionButton fab = findViewById(R.id.fab);
-        fab.setOnClickListener(v -> {
-            android.util.Log.d("FAB_DEBUG", "FAB clicked");
-            showReportDialog();
-        });
+        fab.setOnClickListener(v -> showReportDialog());
     }
 
     private void showReportDialog() {
-        android.util.Log.d("FAB_DEBUG", "showReportDialog called");
-        String[] options = {"Report Lost Item", "Report Found Item"};
-        try {
-            new AlertDialog.Builder(this)
-                    .setTitle("What do you want to report?")
-                    .setItems(options, (dialog, which) -> {
-                        if (which == 0) {
-                            startActivity(new Intent(this, ReportLostActivity.class));
-                        } else {
-                            startActivity(new Intent(this, ReportFoundActivity.class));
-                        }
-                    })
-                    .show();
-            android.util.Log.d("FAB_DEBUG", "Dialog shown");
-        } catch (Exception e) {
-            android.util.Log.e("FAB_DEBUG", "Dialog failed: " + e.getMessage());
-        }
+        BottomSheetDialog sheet = new BottomSheetDialog(this);
+        android.view.View view = getLayoutInflater().inflate(R.layout.dialog_report_options, null);
+        sheet.setContentView(view);
+
+        MaterialCardView cardLost = view.findViewById(R.id.cardReportLost);
+        MaterialCardView cardFound = view.findViewById(R.id.cardReportFound);
+
+        cardLost.setOnClickListener(v -> {
+            sheet.dismiss();
+            startActivity(new Intent(this, ReportLostActivity.class));
+        });
+        cardFound.setOnClickListener(v -> {
+            sheet.dismiss();
+            startActivity(new Intent(this, ReportFoundActivity.class));
+        });
+
+        sheet.show();
     }
 
     public void onSyncTriggered() {

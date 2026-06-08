@@ -59,7 +59,7 @@
         <activity
             android:name=".activities.ItemDetailActivity"
             android:exported="true"
-            android:theme="@style/Theme.LostAndFound.Child">
+            android:theme="@style/Theme.LostAndFound">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -69,6 +69,11 @@
 
         <activity
             android:name=".activities.MapActivity"
+            android:exported="false"
+            android:theme="@style/Theme.LostAndFound" />
+
+        <activity
+            android:name=".activities.LocationPickerActivity"
             android:exported="false"
             android:theme="@style/Theme.LostAndFound" />
 
