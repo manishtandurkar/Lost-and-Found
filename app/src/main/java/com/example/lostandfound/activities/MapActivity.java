@@ -112,7 +112,6 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
             if (items == null) return;
             googleMap.clear();
             markerItemMap.clear();
-            LatLng lastPos = null;
 
             for (ItemEntity item : items) {
                 if (item.latitude == 0 && item.longitude == 0) continue;
@@ -125,11 +124,6 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                         .title(item.title)
                         .icon(icon));
                 if (marker != null) markerItemMap.put(marker, item);
-                lastPos = pos;
-            }
-
-            if (lastPos != null) {
-                googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(lastPos, 14));
             }
         });
     }
