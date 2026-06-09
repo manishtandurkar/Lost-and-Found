@@ -303,7 +303,7 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(intent);
             }
             drawerLayout.closeDrawer(GravityCompat.START);
-            return true;
+            return false;
         });
     }
 

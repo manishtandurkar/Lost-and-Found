@@ -75,7 +75,7 @@
                     android:layout_height="wrap_content"
                     android:text="I lost something and need help"
                     android:textSize="13sp"
-                    android:textColor="@color/text_secondary" />
+                    android:textColor="@color/text_primary" />
             </LinearLayout>
 
         </LinearLayout>
@@ -130,7 +130,7 @@
                     android:layout_height="wrap_content"
                     android:text="I found something that belongs to someone"
                     android:textSize="13sp"
-                    android:textColor="@color/text_secondary" />
+                    android:textColor="@color/text_primary" />
             </LinearLayout>
 
         </LinearLayout>
