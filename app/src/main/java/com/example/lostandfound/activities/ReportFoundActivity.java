@@ -22,25 +22,17 @@ import androidx.lifecycle.ViewModelProvider;
 import com.example.lostandfound.R;
 import com.example.lostandfound.utils.Constants;
 import com.example.lostandfound.viewmodels.ReportViewModel;
-import com.google.android.libraries.places.api.Places;
-import com.google.android.libraries.places.api.model.Place;
-import com.google.android.libraries.places.widget.Autocomplete;
-import com.google.android.libraries.places.widget.AutocompleteActivity;
-import com.google.android.libraries.places.widget.model.AutocompleteActivityMode;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
-import java.util.Arrays;
-import java.util.List;
-
 public class ReportFoundActivity extends AppCompatActivity {
 
     private ReportViewModel viewModel;
     private TextInputEditText etTitle, etDescription, etLocation, etContact;
-    private TextInputLayout tilTitle, tilDescription, tilLocation, tilCategory;
+    private TextInputLayout tilTitle, tilDescription, tilLocation, tilCategory, tilContact;
     private AutoCompleteTextView spinnerCategory;
     private ImageView imgPreview;
     private ProgressBar progressBar;
@@ -60,10 +52,6 @@ public class ReportFoundActivity extends AppCompatActivity {
 
         viewModel = new ViewModelProvider(this).get(ReportViewModel.class);
 
-        if (!Places.isInitialized()) {
-            Places.initialize(getApplicationContext(), getString(R.string.google_maps_key));
-        }
-
         bindViews();
         setupCategoryDropdown();
         observeViewModel();
@@ -78,6 +66,7 @@ public class ReportFoundActivity extends AppCompatActivity {
         tilDescription = findViewById(R.id.tilDescription);
         tilLocation = findViewById(R.id.tilLocation);
         tilCategory = findViewById(R.id.tilCategory);
+        tilContact = findViewById(R.id.tilContact);
         spinnerCategory = findViewById(R.id.spinnerCategory);
         imgPreview = findViewById(R.id.imgPhotoPreview);
         progressBar = findViewById(R.id.progressBar);
@@ -87,7 +76,7 @@ public class ReportFoundActivity extends AppCompatActivity {
         MaterialButton btnSubmit = findViewById(R.id.btnSubmit);
 
         btnPickPhoto.setOnClickListener(v -> requestPhotoPermissionAndPick());
-        btnPickLocation.setOnClickListener(v -> openPlacePicker());
+        btnPickLocation.setOnClickListener(v -> openMapLocationPicker());
         btnSubmit.setOnClickListener(v -> validateAndSubmit());
     }
 
@@ -114,12 +103,10 @@ public class ReportFoundActivity extends AppCompatActivity {
         startActivityForResult(intent, Constants.RC_IMAGE_PICK);
     }
 
-    private void openPlacePicker() {
-        List<Place.Field> fields = Arrays.asList(
-                Place.Field.ID, Place.Field.NAME, Place.Field.LAT_LNG);
-        Intent intent = new Autocomplete.IntentBuilder(AutocompleteActivityMode.OVERLAY, fields)
-                .build(this);
-        startActivityForResult(intent, Constants.RC_PLACE_PICKER);
+    private void openMapLocationPicker() {
+        startActivityForResult(
+                new Intent(this, LocationPickerActivity.class),
+                Constants.RC_MAP_LOCATION_PICKER);
     }
 
     private void validateAndSubmit() {
@@ -149,11 +136,19 @@ public class ReportFoundActivity extends AppCompatActivity {
             valid = false;
         } else tilLocation.setError(null);
 
+        if (contact.isEmpty()) {
+            tilContact.setError("Phone number is required");
+            valid = false;
+        } else if (!contact.matches("[0-9+\\-\\s]{7,15}")) {
+            tilContact.setError("Enter a valid phone number");
+            valid = false;
+        } else tilContact.setError(null);
+
         if (!valid) return;
 
         viewModel.submitItem(title, category, description, selectedLocationName,
                 selectedLat, selectedLng, selectedPhotoUri,
-                contact.isEmpty() ? Constants.CONTACT_CHAT : contact,
+                contact,
                 Constants.TYPE_FOUND);
     }
 
@@ -189,17 +184,12 @@ public class ReportFoundActivity extends AppCompatActivity {
             selectedPhotoUri = data.getData();
             imgPreview.setImageURI(selectedPhotoUri);
             imgPreview.setVisibility(View.VISIBLE);
-        } else if (requestCode == Constants.RC_PLACE_PICKER && resultCode == Activity.RESULT_OK && data != null) {
-            Place place = Autocomplete.getPlaceFromIntent(data);
-            selectedLocationName = place.getName();
-            if (place.getLatLng() != null) {
-                selectedLat = place.getLatLng().latitude;
-                selectedLng = place.getLatLng().longitude;
-            }
+        } else if (requestCode == Constants.RC_MAP_LOCATION_PICKER && resultCode == Activity.RESULT_OK && data != null) {
+            selectedLat = data.getDoubleExtra(Constants.EXTRA_LAT, 0);
+            selectedLng = data.getDoubleExtra(Constants.EXTRA_LNG, 0);
+            selectedLocationName = data.getStringExtra(Constants.EXTRA_LOCATION_NAME);
             etLocation.setText(selectedLocationName);
             tilLocation.setError(null);
-        } else if (requestCode == Constants.RC_PLACE_PICKER && resultCode == AutocompleteActivity.RESULT_ERROR && data != null) {
-            Snackbar.make(etTitle, "Place picker error", Snackbar.LENGTH_SHORT).show();
         }
     }
 

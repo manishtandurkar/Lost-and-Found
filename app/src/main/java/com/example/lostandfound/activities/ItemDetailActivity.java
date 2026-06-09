@@ -192,7 +192,7 @@ public class ItemDetailActivity extends AppCompatActivity implements OnMapReadyC
         } else {
             btnContact.setVisibility(View.VISIBLE);
             btnResolve.setVisibility(View.GONE);
-            btnContact.setOnClickListener(v -> openChat(item, myId));
+            btnContact.setOnClickListener(v -> openWhatsApp(item));
         }
         updateMapPin();
         btnShare.setOnClickListener(v -> shareItemDetails());
@@ -230,13 +230,34 @@ public class ItemDetailActivity extends AppCompatActivity implements OnMapReadyC
         googleMap.getUiSettings().setAllGesturesEnabled(false);
     }
 
-    private void openChat(Item item, String myId) {
-        if (myId == null) return;
-        Intent intent = new Intent(this, ChatActivity.class);
-        intent.putExtra(Constants.EXTRA_ITEM_ID, item.getId());
-        intent.putExtra(Constants.EXTRA_ITEM_TYPE, item.getType());
-        intent.putExtra(Constants.EXTRA_OTHER_USER_ID, item.getPostedBy());
-        startActivity(intent);
+    private void openWhatsApp(Item item) {
+        String phone = item.getContactPreference();
+        if (phone == null || phone.trim().isEmpty()) {
+            Snackbar.make(rootView, "No contact number available", Snackbar.LENGTH_SHORT).show();
+            return;
+        }
+        // Strip spaces/dashes; ensure leading + for international format
+        phone = phone.replaceAll("[\\s\\-]", "");
+        if (!phone.startsWith("+")) phone = "+" + phone;
+
+        boolean isLost = Constants.TYPE_LOST.equals(item.getType());
+        String message = isLost
+                ? "Hi! I saw your lost item \"" + item.getTitle() + "\" on Campus Lost & Found. I think I may have found it!"
+                : "Hi! I saw you found a \"" + item.getTitle() + "\" on Campus Lost & Found. It might be mine!";
+
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW,
+                    Uri.parse("https://wa.me/" + phone.substring(1)
+                            + "?text=" + Uri.encode(message)));
+            intent.setPackage("com.whatsapp");
+            startActivity(intent);
+        } catch (android.content.ActivityNotFoundException e) {
+            // WhatsApp not installed — fall back to any app that handles the URL
+            Intent intent = new Intent(Intent.ACTION_VIEW,
+                    Uri.parse("https://wa.me/" + phone.substring(1)
+                            + "?text=" + Uri.encode(message)));
+            startActivity(intent);
+        }
     }
 
     private void shareItemDetails() {

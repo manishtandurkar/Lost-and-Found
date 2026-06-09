@@ -33,7 +33,7 @@ public class ReportLostActivity extends AppCompatActivity {
 
     private ReportViewModel viewModel;
     private TextInputEditText etTitle, etDescription, etLocation, etContact;
-    private TextInputLayout tilTitle, tilDescription, tilLocation, tilCategory;
+    private TextInputLayout tilTitle, tilDescription, tilLocation, tilCategory, tilContact;
     private AutoCompleteTextView spinnerCategory;
     private ImageView imgPreview;
     private ProgressBar progressBar;
@@ -67,6 +67,7 @@ public class ReportLostActivity extends AppCompatActivity {
         tilDescription = findViewById(R.id.tilDescription);
         tilLocation = findViewById(R.id.tilLocation);
         tilCategory = findViewById(R.id.tilCategory);
+        tilContact = findViewById(R.id.tilContact);
         spinnerCategory = findViewById(R.id.spinnerCategory);
         imgPreview = findViewById(R.id.imgPhotoPreview);
         progressBar = findViewById(R.id.progressBar);
@@ -136,11 +137,19 @@ public class ReportLostActivity extends AppCompatActivity {
             valid = false;
         } else tilLocation.setError(null);
 
+        if (contact.isEmpty()) {
+            tilContact.setError("Phone number is required");
+            valid = false;
+        } else if (!contact.matches("[0-9+\\-\\s]{7,15}")) {
+            tilContact.setError("Enter a valid phone number");
+            valid = false;
+        } else tilContact.setError(null);
+
         if (!valid) return;
 
         viewModel.submitItem(title, category, description, selectedLocationName,
                 selectedLat, selectedLng, selectedPhotoUri,
-                contact.isEmpty() ? Constants.CONTACT_CHAT : contact,
+                contact,
                 Constants.TYPE_LOST);
     }
 
