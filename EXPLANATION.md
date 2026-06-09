@@ -4,6 +4,38 @@ This document explains every Android concept used in this app, starting from the
 
 ---
 
+## Table of Contents
+
+- [How an Android App is Structured — The Big Picture](#how-an-android-app-is-structured--the-big-picture)
+- [1. AndroidManifest.xml — The App's ID Card](#1-androidmanifestxml--the-apps-id-card)
+- [2. Activity Lifecycle — An Activity is Not Always "Running"](#2-activity-lifecycle--an-activity-is-not-always-running)
+- [3. XML Layouts — Drawing the UI](#3-xml-layouts--drawing-the-ui)
+- [4. Intents — How Screens Talk to Each Other](#4-intents--how-screens-talk-to-each-other)
+- [5. SharedPreferences — Remembering Small Pieces of Data](#5-sharedpreferences--remembering-small-pieces-of-data)
+- [6. MVVM Architecture — Keeping Code Organized](#6-mvvm-architecture--keeping-code-organized)
+- [7. RecyclerView — Displaying a Scrollable List Efficiently](#7-recyclerview--displaying-a-scrollable-list-efficiently)
+- [8. Room Database — Offline Data Storage](#8-room-database--offline-data-storage)
+- [9. Firebase Realtime Database — Cloud Storage](#9-firebase-realtime-database--cloud-storage)
+- [10. Firebase Authentication — Who Is the User?](#10-firebase-authentication--who-is-the-user)
+- [11. Firebase Cloud Messaging (FCM) — Push Notifications](#11-firebase-cloud-messaging-fcm--push-notifications)
+- [12. WorkManager — Reliable Background Tasks](#12-workmanager--reliable-background-tasks)
+- [13. BroadcastReceiver — Listening for System Events](#13-broadcastreceiver--listening-for-system-events)
+- [14. Service — Background Processing](#14-service--background-processing)
+- [15. Google Maps SDK — Interactive Maps](#15-google-maps-sdk--interactive-maps)
+- [16. Material Design 3 and Theming](#16-material-design-3-and-theming)
+- [17. The Application Class — App-wide Initialization](#17-the-application-class--app-wide-initialization)
+- [18. Permissions — Requesting Access to Device Features](#18-permissions--requesting-access-to-device-features)
+- [19. Content Provider — Accessing the Photo Gallery](#19-content-provider--accessing-the-photo-gallery)
+- [20. Threading — Keeping the UI Smooth](#20-threading--keeping-the-ui-smooth)
+- [21. CoordinatorLayout — Smart Layout Coordination](#21-coordinatorlayout--smart-layout-coordination)
+- [22. Navigation — Drawer, Bottom Nav, and Back Stack](#22-navigation--drawer-bottom-nav-and-back-stack)
+- [23. Gradle — The Build System](#23-gradle--the-build-system)
+- [24. Image Loading — Glide](#24-image-loading--glide)
+- [25. BottomSheetDialog — The Report Options Popup](#25-bottomsheetdialog--the-report-options-popup)
+- [Putting It All Together — A Complete User Journey](#putting-it-all-together--a-complete-user-journey)
+
+---
+
 ## How an Android App is Structured — The Big Picture
 
 Before diving into concepts, here is the mental model you need.
