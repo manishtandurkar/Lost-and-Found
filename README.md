@@ -1,6 +1,6 @@
 # Lost & Found — Campus Recovery Hub
 
-An Android app that helps college students report, discover, and recover lost items on campus — with real-time matching, in-app chat, and map-based item discovery.
+An Android app that helps RVCE students report, discover, and recover lost items on campus — with real-time feed, map-based discovery, WhatsApp contact, and push notifications.
 
 ---
 
@@ -14,13 +14,17 @@ An Android app that helps college students report, discover, and recover lost it
 
 - **Google Sign-In** restricted to `rvce.edu.in` domain — no outsider access
 - **Real-time feed** of lost & found items with filter chips (All / Lost / Found / My Posts)
+- **Pin-on-map location picker** — drop a pin on Google Maps when reporting an item
+- **Google Maps view** — all items plotted as custom color-coded markers (red = lost, green = found), centered on RVCE campus
+- **WhatsApp contact** — tap Contact on any item to open WhatsApp with a pre-filled message to the poster
+- **Mandatory phone number** on every report — ensures contactability
+- **Only the poster can mark items as Resolved**
+- **Push notifications** via Firebase Cloud Messaging — all users get notified on every new post (WorkManager polls every 15 min as a local fallback; FCM topic `new_items` used for server-side delivery)
 - **Smart matching** — when a found item is reported, the app automatically notifies users whose lost items match by category and keywords
-- **Google Maps view** — all items plotted as color-coded markers (red = lost, green = found)
-- **In-app chat** — contact item posters directly without sharing personal info
-- **Push notifications** via Firebase Cloud Messaging for matches and messages
 - **Offline support** — Room SQLite cache keeps the feed available without a connection; syncs automatically when back online
-- **Location autocomplete** via Google Places API when reporting items
-- **Photo uploads** to Firebase Storage
+- **Photo uploads** to Firebase Storage; items without photos show no placeholder
+- **DayNight theme** — follows system dark/light mode throughout the entire app
+- **Navigation drawer** + bottom navigation bar
 
 ---
 
@@ -29,14 +33,17 @@ An Android app that helps college students report, discover, and recover lost it
 | Layer | Technology |
 |---|---|
 | Language | Java |
+| Min SDK | Android 8.0 (API 26) |
+| Target SDK | Android 15 (API 35) |
 | Architecture | MVVM + Repository |
-| UI | Material Design 3, ConstraintLayout |
+| UI | Material Design 3 (DayNight), ConstraintLayout |
 | Auth | Firebase Auth + Google Sign-In |
 | Database | Firebase Realtime Database |
 | Local cache | Room (SQLite) |
 | Storage | Firebase Storage |
-| Messaging | Firebase Cloud Messaging |
-| Maps | Google Maps SDK + Places API |
+| Messaging | Firebase Cloud Messaging (topic: `new_items`) |
+| Background work | WorkManager (periodic 15 min polling) |
+| Maps | Google Maps SDK |
 | Image loading | Glide |
 | Reactive data | LiveData + ViewModel |
 
@@ -48,20 +55,54 @@ An Android app that helps college students report, discover, and recover lost it
 UI (Activities)
     │
     ▼
-ViewModels (FeedViewModel, ReportViewModel, ChatViewModel)
+ViewModels (FeedViewModel, ReportViewModel)
     │
     ▼
-Repositories (ItemRepository, ChatRepository, UserRepository)
+Repositories (ItemRepository, UserRepository)
     │            │
     ▼            ▼
 Firebase     Room DB
 (RTDB)       (cache)
 ```
 
-Background services:
+Background components:
+- **NewItemWorker** (WorkManager) — polls Firebase every 15 min for new items, fires local notifications
 - **MatchingService** — finds lost↔found keyword/category matches, sends FCM notifications
 - **FCMService** — handles incoming push notifications, deep-links to item details
 - **NetworkReceiver** — triggers a sync when connectivity is restored after being offline
+
+---
+
+## Firebase Database Structure
+
+```
+root/
+├── users/
+│   └── {userId}/
+│       ├── name
+│       ├── email
+│       ├── profilePhotoUrl
+│       ├── college
+│       └── fcmToken
+│
+├── lost_items/
+│   └── {itemId}/
+│       ├── title
+│       ├── category
+│       ├── description
+│       ├── locationName
+│       ├── latitude
+│       ├── longitude
+│       ├── photoUrl
+│       ├── postedBy        (userId)
+│       ├── postedByName    (display name stored at post time)
+│       ├── contactPreference (phone number)
+│       ├── status          (active / resolved)
+│       └── timestamp
+│
+└── found_items/
+    └── {itemId}/           (same fields as lost_items)
+```
 
 ---
 
@@ -69,14 +110,20 @@ Background services:
 
 ```
 app/src/main/java/com/example/lostandfound/
-├── activities/          # All screens (Login, Main, Report, Detail, Map, Chat…)
-├── adapters/            # RecyclerView adapters
-├── database/            # Room entity, DAO, and database class
-├── models/              # Item, User, Message, NotificationItem
-├── repository/          # Data access layer
-├── services/            # MatchingService, FCMService, NetworkReceiver
-├── utils/               # Constants, SessionManager, NetworkUtils
-└── viewmodel/           # FeedViewModel, ReportViewModel, ChatViewModel
+├── activities/       LoginActivity, MainActivity, ReportLostActivity,
+│                     ReportFoundActivity, ItemDetailActivity,
+│                     MapActivity, LocationPickerActivity, MyPostsActivity
+├── adapters/         ItemAdapter
+├── database/         AppDatabase, ItemDao, ItemEntity
+├── models/           Item, User
+├── notifications/    FCMService
+├── receivers/        NetworkReceiver
+├── repository/       ItemRepository, UserRepository
+├── services/         MatchingService
+├── utils/            Constants, SessionManager, NetworkUtils
+├── viewmodels/       FeedViewModel, ReportViewModel
+├── workers/          NewItemWorker
+└── LostAndFoundApp.java
 ```
 
 ---
@@ -88,7 +135,7 @@ app/src/main/java/com/example/lostandfound/
 - Android Studio Hedgehog or newer
 - JDK 17
 - A Firebase project with Realtime Database, Auth, Storage, and FCM enabled
-- Google Maps & Places API key
+- Google Maps API key
 
 ### Setup
 
