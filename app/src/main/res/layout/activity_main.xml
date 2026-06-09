@@ -48,7 +48,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginHorizontal="12dp"
-                android:layout_marginVertical="8dp"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="8dp"
                 app:cardBackgroundColor="@android:color/transparent"
                 app:cardCornerRadius="28dp"
                 app:cardElevation="0dp"
@@ -65,10 +66,10 @@
 
             </com.google.android.material.card.MaterialCardView>
 
-            <HorizontalScrollView
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:scrollbars="none">
+                android:gravity="center_horizontal">
 
                 <com.google.android.material.chip.ChipGroup
                     android:id="@+id/chipGroupFilter"
@@ -108,7 +109,7 @@
                         android:text="My Posts" />
 
                 </com.google.android.material.chip.ChipGroup>
-            </HorizontalScrollView>
+            </LinearLayout>
 
             <FrameLayout
                 android:layout_width="match_parent"
