@@ -29,7 +29,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="vertical"
-            android:background="#121212"
+            android:background="@color/app_background"
             app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
             <TextView
@@ -131,7 +131,7 @@
                     android:layout_gravity="center"
                     android:text="No items found.\nTap + to report a lost or found item!"
                     android:textAlignment="center"
-                    android:textColor="#B0B0B0"
+                    android:textColor="@color/text_on_surface_secondary"
                     android:textSize="16sp"
                     android:visibility="gone" />
 

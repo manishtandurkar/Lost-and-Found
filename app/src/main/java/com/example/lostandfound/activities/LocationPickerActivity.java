@@ -63,7 +63,7 @@ public class LocationPickerActivity extends AppCompatActivity implements OnMapRe
     @Override
     public void onMapReady(GoogleMap map) {
         googleMap = map;
-        googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(DEFAULT_CENTER, 15));
+        googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(DEFAULT_CENTER, 16));
 
         googleMap.setOnMapClickListener(latLng -> {
             googleMap.clear();

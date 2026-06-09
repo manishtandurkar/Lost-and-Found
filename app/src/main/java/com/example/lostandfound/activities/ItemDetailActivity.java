@@ -228,7 +228,7 @@ public class ItemDetailActivity extends AppCompatActivity implements OnMapReadyC
                 .snippet(currentItem.getLocationName())
                 .icon(BitmapDescriptorFactory.defaultMarker(color)));
 
-        googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(pos, 15f));
+        googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(pos, 16f));
         googleMap.getUiSettings().setAllGesturesEnabled(false);
     }
 
