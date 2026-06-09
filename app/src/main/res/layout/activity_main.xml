@@ -122,7 +122,7 @@
                     android:layout_height="match_parent"
                     android:clipToPadding="false"
                     android:padding="8dp"
-                    android:paddingBottom="64dp" />
+                    android:paddingBottom="8dp" />
 
                 <TextView
                     android:id="@+id/tvEmptyState"
