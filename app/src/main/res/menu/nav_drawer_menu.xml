@@ -15,10 +15,6 @@
             android:id="@+id/drawer_my_posts"
             android:icon="@android:drawable/ic_menu_my_calendar"
             android:title="My Posts" />
-        <item
-            android:id="@+id/drawer_notifications"
-            android:icon="@android:drawable/ic_popup_reminder"
-            android:title="Notifications" />
     </group>
 
     <group>

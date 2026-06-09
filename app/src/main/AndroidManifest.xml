@@ -78,17 +78,7 @@
             android:theme="@style/Theme.LostAndFound" />
 
         <activity
-            android:name=".activities.ChatActivity"
-            android:exported="false"
-            android:theme="@style/Theme.LostAndFound.Child" />
-
-        <activity
             android:name=".activities.MyPostsActivity"
-            android:exported="false"
-            android:theme="@style/Theme.LostAndFound.Child" />
-
-        <activity
-            android:name=".activities.NotificationActivity"
             android:exported="false"
             android:theme="@style/Theme.LostAndFound.Child" />
 

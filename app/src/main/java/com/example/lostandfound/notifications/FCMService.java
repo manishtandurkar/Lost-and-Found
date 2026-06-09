@@ -10,9 +10,8 @@ import android.media.RingtoneManager;
 import androidx.core.app.NotificationCompat;
 
 import com.example.lostandfound.R;
+import com.example.lostandfound.MainActivity;
 import com.example.lostandfound.activities.ItemDetailActivity;
-import com.example.lostandfound.activities.NotificationActivity;
-import com.example.lostandfound.models.NotificationItem;
 import com.example.lostandfound.repository.UserRepository;
 import com.example.lostandfound.utils.Constants;
 import com.example.lostandfound.utils.SessionManager;
@@ -42,18 +41,13 @@ public class FCMService extends FirebaseMessagingService {
         String itemId = remoteMessage.getData().get("itemId");
         String itemType = remoteMessage.getData().getOrDefault("itemType", "lost");
 
-        // Save to notification history
-        NotificationActivity.saveNotification(this,
-                new NotificationItem(title, body, itemId, System.currentTimeMillis()));
-
-        // Build deep-link intent
         Intent intent;
         if (itemId != null && !itemId.isEmpty()) {
             intent = new Intent(this, ItemDetailActivity.class);
             intent.putExtra(Constants.EXTRA_ITEM_ID, itemId);
             intent.putExtra(Constants.EXTRA_ITEM_TYPE, itemType);
         } else {
-            intent = new Intent(this, NotificationActivity.class);
+            intent = new Intent(this, MainActivity.class);
         }
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
 

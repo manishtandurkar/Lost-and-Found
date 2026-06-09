@@ -11,16 +11,11 @@ public class Constants {
     public static final String DB_USERS = "users";
     public static final String DB_LOST_ITEMS = "lost_items";
     public static final String DB_FOUND_ITEMS = "found_items";
-    public static final String DB_CHATS = "chats";
-
     public static final String STATUS_ACTIVE = "active";
     public static final String STATUS_RESOLVED = "resolved";
 
     public static final String TYPE_LOST = "lost";
     public static final String TYPE_FOUND = "found";
-
-    public static final String CONTACT_CHAT = "In-App Chat";
-    public static final String CONTACT_PHONE = "Phone Number";
 
     public static final String[] CATEGORIES = {
             "Electronics", "Accessories", "Books", "ID Card", "Clothing", "Bag", "Other"
@@ -30,8 +25,6 @@ public class Constants {
 
     public static final String EXTRA_ITEM_ID = "item_id";
     public static final String EXTRA_ITEM_TYPE = "item_type";
-    public static final String EXTRA_CHAT_ID = "chat_id";
-    public static final String EXTRA_OTHER_USER_ID = "other_user_id";
     public static final String EXTRA_FILTER = "filter";
 
     public static final String FILTER_ALL = "All";
@@ -41,6 +34,7 @@ public class Constants {
 
     public static final String CHANNEL_ID = "lost_found_channel";
     public static final String CHANNEL_NAME = "Lost & Found Notifications";
+    public static final String TOPIC_NEW_ITEMS = "new_items";
 
     public static final int RC_SIGN_IN = 100;
     public static final int RC_LOCATION_PERMISSION = 101;

@@ -98,7 +98,11 @@ public class ItemAdapter extends RecyclerView.Adapter<ItemAdapter.ItemViewHolder
             tvCategory.setText(item.category);
             tvLocation.setText(item.locationName != null ? item.locationName : "Unknown location");
             tvDate.setText(sdf.format(new Date(item.timestamp)));
+            boolean isResolved = Constants.STATUS_RESOLVED.equals(item.status);
             tvStatus.setText(item.status != null ? item.status.toUpperCase() : "");
+            tvStatus.setTextColor(isResolved
+                    ? ctx.getColor(android.R.color.darker_gray)
+                    : ctx.getColor(R.color.found_color));
 
             boolean isLost = Constants.TYPE_LOST.equals(item.type);
             tvType.setText(isLost ? "LOST" : "FOUND");
@@ -107,11 +111,12 @@ public class ItemAdapter extends RecyclerView.Adapter<ItemAdapter.ItemViewHolder
                     : ctx.getColor(R.color.found_color));
 
             if (item.photoUrl != null && !item.photoUrl.isEmpty()) {
+                imgPhoto.setVisibility(View.VISIBLE);
                 Glide.with(ctx).load(item.photoUrl)
                         .placeholder(R.drawable.ic_image_placeholder)
                         .into(imgPhoto);
             } else {
-                imgPhoto.setImageResource(R.drawable.ic_image_placeholder);
+                imgPhoto.setVisibility(View.GONE);
             }
         }
     }

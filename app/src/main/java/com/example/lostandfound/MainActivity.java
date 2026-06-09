@@ -21,7 +21,6 @@ import com.bumptech.glide.Glide;
 import com.example.lostandfound.activities.LoginActivity;
 import com.example.lostandfound.activities.MapActivity;
 import com.example.lostandfound.activities.MyPostsActivity;
-import com.example.lostandfound.activities.NotificationActivity;
 import com.example.lostandfound.activities.ReportFoundActivity;
 import com.example.lostandfound.activities.ReportLostActivity;
 import com.example.lostandfound.adapters.ItemAdapter;
@@ -40,7 +39,15 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.navigation.NavigationView;
 import com.google.android.material.snackbar.Snackbar;
 import androidx.annotation.NonNull;
+import androidx.work.ExistingPeriodicWorkPolicy;
+import androidx.work.PeriodicWorkRequest;
+import androidx.work.WorkManager;
+
+import com.example.lostandfound.workers.NewItemWorker;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.messaging.FirebaseMessaging;
+
+import java.util.concurrent.TimeUnit;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -68,6 +75,14 @@ public class MainActivity extends AppCompatActivity {
 
         sessionManager = new SessionManager(this);
         feedViewModel = new ViewModelProvider(this).get(FeedViewModel.class);
+
+        FirebaseMessaging.getInstance().subscribeToTopic(Constants.TOPIC_NEW_ITEMS);
+
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+                "new_item_check",
+                ExistingPeriodicWorkPolicy.KEEP,
+                new PeriodicWorkRequest.Builder(NewItemWorker.class, 15, TimeUnit.MINUTES).build()
+        );
 
         MaterialToolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -222,9 +237,6 @@ public class MainActivity extends AppCompatActivity {
             } else if (id == R.id.nav_my_posts) {
                 startActivity(new Intent(this, MyPostsActivity.class));
                 return true;
-            } else if (id == R.id.nav_notifications) {
-                startActivity(new Intent(this, NotificationActivity.class));
-                return true;
             }
             return false;
         });
@@ -283,8 +295,6 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(new Intent(this, MapActivity.class));
             } else if (id == R.id.drawer_my_posts) {
                 startActivity(new Intent(this, MyPostsActivity.class));
-            } else if (id == R.id.drawer_notifications) {
-                startActivity(new Intent(this, NotificationActivity.class));
             } else if (id == R.id.drawer_logout) {
                 FirebaseAuth.getInstance().signOut();
                 sessionManager.clearSession();

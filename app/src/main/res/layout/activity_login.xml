@@ -4,6 +4,7 @@
     android:id="@+id/rootLoginLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/white"
     android:padding="32dp">
 
     <ImageView
@@ -37,7 +38,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
         android:text="Sign in with your college account"
-        android:textColor="@color/text_secondary"
+        android:textColor="@color/text_primary"
         android:textSize="14sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
