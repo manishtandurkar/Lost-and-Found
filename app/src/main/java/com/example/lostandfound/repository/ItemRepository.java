@@ -196,6 +196,7 @@ public class ItemRepository {
         e.longitude = item.getLongitude();
         e.photoUrl = item.getPhotoUrl();
         e.postedBy = item.getPostedBy();
+        e.postedByName = item.getPostedByName();
         e.contactPreference = item.getContactPreference();
         e.status = item.getStatus();
         e.timestamp = item.getTimestamp();

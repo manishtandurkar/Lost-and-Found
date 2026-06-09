@@ -40,6 +40,9 @@ public class ItemEntity {
     @ColumnInfo(name = "posted_by")
     public String postedBy;
 
+    @ColumnInfo(name = "posted_by_name")
+    public String postedByName;
+
     @ColumnInfo(name = "contact_preference")
     public String contactPreference;
 

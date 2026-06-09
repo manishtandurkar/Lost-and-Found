@@ -15,6 +15,7 @@ import com.example.lostandfound.adapters.ItemAdapter;
 import com.example.lostandfound.utils.Constants;
 import com.example.lostandfound.utils.SessionManager;
 import com.example.lostandfound.viewmodels.FeedViewModel;
+import com.google.android.material.appbar.MaterialToolbar;
 
 public class MyPostsActivity extends AppCompatActivity {
 
@@ -23,6 +24,8 @@ public class MyPostsActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_my_posts);
 
+        MaterialToolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         setTitle("My Posts");
 

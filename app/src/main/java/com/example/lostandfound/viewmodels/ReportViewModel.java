@@ -39,6 +39,7 @@ public class ReportViewModel extends AndroidViewModel {
         item.setLatitude(latitude);
         item.setLongitude(longitude);
         item.setPostedBy(sessionManager.getUserId());
+        item.setPostedByName(sessionManager.getUserName());
         item.setContactPreference(contactPreference);
         item.setStatus(Constants.STATUS_ACTIVE);
         item.setTimestamp(System.currentTimeMillis());

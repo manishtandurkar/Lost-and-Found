@@ -10,6 +10,7 @@ public class Item {
     private double longitude;
     private String photoUrl;
     private String postedBy;
+    private String postedByName;
     private String contactPreference;
     private String status;
     private long timestamp;
@@ -62,6 +63,9 @@ public class Item {
 
     public String getPostedBy() { return postedBy; }
     public void setPostedBy(String postedBy) { this.postedBy = postedBy; }
+
+    public String getPostedByName() { return postedByName; }
+    public void setPostedByName(String postedByName) { this.postedByName = postedByName; }
 
     public String getContactPreference() { return contactPreference; }
     public void setContactPreference(String contactPreference) { this.contactPreference = contactPreference; }

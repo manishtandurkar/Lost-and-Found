@@ -15,6 +15,7 @@ import com.bumptech.glide.Glide;
 import com.example.lostandfound.R;
 import com.example.lostandfound.models.Item;
 import com.example.lostandfound.repository.ItemRepository;
+import com.example.lostandfound.repository.UserRepository;
 import com.example.lostandfound.utils.Constants;
 import com.example.lostandfound.utils.SessionManager;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -27,10 +28,6 @@ import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.snackbar.Snackbar;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -39,6 +36,7 @@ import java.util.Locale;
 public class ItemDetailActivity extends AppCompatActivity implements OnMapReadyCallback {
 
     private ItemRepository itemRepository;
+    private UserRepository userRepository;
     private SessionManager sessionManager;
     private Item currentItem;
     private String itemId, itemType;
@@ -64,6 +62,7 @@ public class ItemDetailActivity extends AppCompatActivity implements OnMapReadyC
         }
 
         itemRepository = new ItemRepository(this);
+        userRepository = new UserRepository();
         sessionManager = new SessionManager(this);
 
         itemId = getIntent().getStringExtra(Constants.EXTRA_ITEM_ID);
@@ -160,23 +159,26 @@ public class ItemDetailActivity extends AppCompatActivity implements OnMapReadyC
         String myId = sessionManager.getUserId();
         boolean isOwner = myId != null && myId.equals(item.getPostedBy());
 
+        String posterName = item.getPostedByName();
         if (isOwner) {
             String myName = sessionManager.getUserName();
             tvPostedBy.setText("Posted by: " + (myName != null ? myName : "You"));
+        } else if (posterName != null && !posterName.isEmpty()) {
+            tvPostedBy.setText("Posted by: " + posterName);
         } else {
-            FirebaseDatabase.getInstance("https://lost-and-found-d65bc-default-rtdb.firebaseio.com").getReference(Constants.DB_USERS)
-                    .child(item.getPostedBy()).addListenerForSingleValueEvent(new ValueEventListener() {
-                        @Override
-                        public void onDataChange(DataSnapshot snapshot) {
-                            String name = snapshot.child("name").getValue(String.class);
-                            tvPostedBy.setText("Posted by: " + (name != null ? name : "Unknown"));
-                        }
-
-                        @Override
-                        public void onCancelled(DatabaseError error) {
-                            tvPostedBy.setText("Posted by: Unknown");
-                        }
-                    });
+            // Old item without postedByName — look up from /users/{uid}
+            tvPostedBy.setText("Posted by: ...");
+            userRepository.getUser(item.getPostedBy(), new UserRepository.UserFetchCallback() {
+                @Override
+                public void onFetched(com.example.lostandfound.models.User user) {
+                    String name = (user != null && user.getName() != null) ? user.getName() : "Unknown";
+                    tvPostedBy.setText("Posted by: " + name);
+                }
+                @Override
+                public void onError(String message) {
+                    tvPostedBy.setText("Posted by: Unknown");
+                }
+            });
         }
 
         if (isOwner) {
