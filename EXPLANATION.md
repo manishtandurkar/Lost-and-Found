@@ -1,586 +1,798 @@
-# Android Application Development — Technical Explanation
-## Campus Lost & Found Hub
+# Campus Lost & Found — Android Development Explained
 
-This document explains every Android development concept applied in this project in technical detail, with direct references to how each concept is implemented in the codebase.
-
----
-
-## 1. Application Architecture — MVVM
-
-### What is MVVM?
-Model-View-ViewModel (MVVM) is an architectural pattern that separates the UI (View) from the business logic and data (Model) through an intermediary layer (ViewModel). Android Jetpack's `ViewModel` and `LiveData` classes provide the framework-level support for MVVM.
-
-### How it is applied here
-
-**Model** — `Item`, `User`, `ItemEntity`  
-Plain Java objects (POJOs) that represent data. `Item` is the Firebase model. `ItemEntity` is the Room entity (local database model). They are separate because Firebase and Room have different serialization requirements.
-
-**View** — Activities (`MainActivity`, `ItemDetailActivity`, `ReportLostActivity`, etc.)  
-Activities only know how to display data and respond to user interaction. They observe LiveData from the ViewModel and update the UI when data changes. They never talk to Firebase or Room directly.
-
-**ViewModel** — `FeedViewModel`, `ReportViewModel`  
-Holds UI-related data and survives configuration changes (screen rotation). Communicates with the Repository layer.
-
-```
-Activity (observes LiveData)
-    ↕ LiveData
-ViewModel (holds state, calls repository)
-    ↕ method calls / callbacks
-Repository (abstracts data source)
-    ↕                  ↕
-Firebase RTDB       Room DB
-```
-
-**Repository** — `ItemRepository`, `UserRepository`  
-Single source of truth for data. Decides whether to fetch from Firebase or Room. The ViewModel never knows which source was used.
-
-### Why MVVM over MVC/MVP?
-- ViewModel survives configuration changes; an Activity-based controller does not
-- LiveData is lifecycle-aware — no memory leaks from observers left after Activity destruction
-- Repository pattern makes the data layer independently testable
+This document explains every Android concept used in this app, starting from the very basics and building up progressively. If you understand basic programming (variables, functions, classes), you can follow everything here.
 
 ---
 
-## 2. Activity and Activity Lifecycle
+## How an Android App is Structured — The Big Picture
 
-### What is an Activity?
-An Activity is a single screen with a user interface. It is a subclass of `AppCompatActivity` (which extends `Activity`). Android manages Activities in a back stack.
+Before diving into concepts, here is the mental model you need.
 
-### Activities in this project
+An Android app is a collection of **screens**. Each screen is an independent unit called an **Activity**. Activities are Java classes that the Android OS starts, pauses, and stops as the user navigates around.
 
-| Activity | Purpose |
+When the user taps your app icon, the OS starts one Activity. When the user taps a button to go to another screen, your code starts another Activity. When the user presses Back, the OS destroys the top Activity and reveals the previous one.
+
+The OS keeps track of all open Activities in a **back stack** — exactly like a stack of papers. The top paper is what the user sees. Back removes the top paper.
+
+```
+User sees:     [ItemDetailActivity]   ← currently on screen
+               [MainActivity]
+               [SplashActivity]       ← bottom of stack
+```
+
+This app has 9 Activities:
+
+| Activity | What the user sees |
 |---|---|
-| `SplashActivity` | Entry point; checks session and routes to Login or Main |
-| `LoginActivity` | Google Sign-In flow |
-| `MainActivity` | Home feed, navigation hub |
+| `SplashActivity` | Launch screen — checks if already logged in |
+| `LoginActivity` | "Sign in with Google" screen |
+| `MainActivity` | The main feed of lost/found items |
 | `ReportLostActivity` | Form to report a lost item |
 | `ReportFoundActivity` | Form to report a found item |
-| `ItemDetailActivity` | Full details of a single item |
-| `MapActivity` | Full-screen map of all items |
-| `LocationPickerActivity` | Pin-drop map picker |
-| `MyPostsActivity` | Current user's own posts |
-
-### Lifecycle methods used
-
-**`onCreate(Bundle)`**  
-Called once when the Activity is created. Used to call `setContentView()`, bind views with `findViewById()`, set up RecyclerView adapters, observe LiveData, and attach click listeners.
-
-**`onResume()`**  
-Called every time the Activity comes to the foreground — after creation and after returning from another Activity. Used in `MainActivity.onResume()` to reset the bottom navigation selected item to Feed tab, so when the user navigates back from MapActivity or MyPostsActivity, the Feed tab is always shown as active.
-
-**`onActivityResult(int, int, Intent)`**  
-Called when a started Activity returns a result. Used in `ReportLostActivity` and `ReportFoundActivity` to receive the result from `LocationPickerActivity` (lat/lng/address) and image picker (photo URI). The request code distinguishes which Activity returned.
-
-**`onSupportNavigateUp()`**  
-Called when the user taps the Up (back arrow) button in the toolbar. Overridden in every secondary Activity to call `finish()`, which pops the Activity off the back stack and returns to the previous screen.
-
-### Configuration changes
-ViewModels survive rotation because they are stored in `ViewModelStore`, which is not destroyed on configuration changes. This means the fetched item list in `FeedViewModel` is retained across screen rotation without re-fetching from Firebase.
+| `ItemDetailActivity` | Full details of one item |
+| `MapActivity` | Map with all item pins |
+| `LocationPickerActivity` | Drop a pin to pick a location |
+| `MyPostsActivity` | The current user's own posts |
 
 ---
 
-## 3. Intents
+## 1. AndroidManifest.xml — The App's ID Card
 
-### Explicit Intents
-Used to navigate between Activities within the same app. The target component class is specified directly.
+**What it is:**  
+Before Android can run your app, it needs to know what's inside it. The `AndroidManifest.xml` file is a declaration file that tells the OS everything it needs to know before running a single line of Java code.
 
-```java
-// Navigating to ItemDetailActivity with data
-Intent intent = new Intent(this, ItemDetailActivity.class);
-intent.putExtra(Constants.EXTRA_ITEM_ID, item.id);
-intent.putExtra(Constants.EXTRA_ITEM_TYPE, item.type);
-startActivity(intent);
+**What it contains in this app:**
+
+- Every Activity is listed here. The OS cannot start an Activity that is not declared in the manifest — it simply won't exist as far as Android is concerned.
+- The **entry point** (first screen) is marked with a special `intent-filter`:
+  ```xml
+  <activity android:name=".activities.SplashActivity" android:exported="true">
+      <intent-filter>
+          <action android:name="android.intent.action.MAIN" />
+          <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
+  </activity>
+  ```
+  `MAIN` + `LAUNCHER` means "this is the Activity to start when the user taps the app icon."
+
+- Every **permission** the app needs is declared here (camera, internet, location). Without declaring a permission, the OS will deny the request even if you ask at runtime.
+
+- The **Application class** (explained later), **Services**, **BroadcastReceivers**, and **FCM service** are all registered here.
+
+- The **Google Maps API key** is stored here as metadata — the Maps SDK reads it automatically.
+
+- `android:theme="@style/Theme.LostAndFound"` sets the default visual theme for all Activities. Individual Activities can override this.
+
+---
+
+## 2. Activity Lifecycle — An Activity is Not Always "Running"
+
+**The problem it solves:**  
+On a phone, things happen while your app is open — calls come in, the user gets a notification, they rotate the screen, they switch to another app. Android needs to control your Activity when these events happen. The **Activity Lifecycle** is the system Android uses to notify your code about these state changes.
+
+**The key lifecycle methods:**
+
+```
+onCreate  →  onStart  →  onResume  (Activity is visible and interactive)
+                            ↓
+                         onPause   (Another Activity comes to foreground)
+                            ↓
+                         onStop    (Activity is no longer visible)
+                            ↓
+                         onDestroy (Activity is removed from memory)
 ```
 
-The receiving Activity reads extras with `getIntent().getStringExtra(key)`.
+**How this app uses lifecycle methods:**
 
-### Implicit Intents
-Used to invoke functionality from other apps without knowing which app handles it.
+`onCreate(Bundle savedInstanceState)` — Called once when the Activity is first created. This is where we:
+- Call `setContentView(R.layout.activity_main)` to inflate the XML layout and show it on screen
+- Find views with `findViewById(R.id.rvFeed)` to get references to UI elements
+- Set up click listeners, RecyclerView adapters, and observe data
 
-**Image picker** — `ReportLostActivity` / `ReportFoundActivity`:
+`onResume()` — Called every time the Activity comes back to the foreground — after creation AND after the user returns from another Activity. In `MainActivity`, we use this to reset the bottom navigation bar back to the Feed tab:
+```java
+@Override
+protected void onResume() {
+    super.onResume();
+    bottomNav.setSelectedItemId(R.id.nav_feed);
+}
+```
+This ensures that when the user goes to MapActivity and presses Back, the Feed tab appears selected rather than Map.
+
+`onActivityResult(requestCode, resultCode, data)` — Called when another Activity you started returns a result. Used when:
+- `LocationPickerActivity` returns the picked latitude, longitude, and address
+- The image picker returns the selected photo's URI
+
+`onSupportNavigateUp()` — Called when the user taps the back arrow in the toolbar. We override it to call `finish()` which destroys the current Activity and returns to the previous one.
+
+**Screen rotation:** When the user rotates the phone, Android destroys and recreates the Activity. This would normally wipe all loaded data. The ViewModel pattern (explained in Section 6) solves this.
+
+---
+
+## 3. XML Layouts — Drawing the UI
+
+**What it is:**  
+Every Activity's visual appearance is defined in an XML file stored in `res/layout/`. XML layouts describe the hierarchy of views (buttons, text fields, images) and their properties.
+
+**How an Activity connects to its layout:**
+```java
+// In onCreate():
+setContentView(R.layout.activity_main);
+```
+Android inflates (parses and creates) the view hierarchy from the XML and displays it.
+
+**Finding views in Java:**
+```java
+RecyclerView rv = findViewById(R.id.rvFeed);
+TextView tvTitle = findViewById(R.id.tvDetailTitle);
+```
+`R.id.rvFeed` is an auto-generated integer constant. When you give a view `android:id="@+id/rvFeed"` in XML, Android generates `R.id.rvFeed` at build time.
+
+**Key layout containers used:**
+- `ConstraintLayout` — positions views using constraints (like "this button is 16dp below that text"). Used in LoginActivity.
+- `LinearLayout` — stacks views horizontally or vertically in order. Used inside cards and dialogs.
+- `CoordinatorLayout` — a smart FrameLayout that coordinates behaviour between child views (e.g., RecyclerView auto-adjusts its top padding to account for the toolbar height). Used in MainActivity, MyPostsActivity, ItemDetailActivity.
+- `ScrollView` — wraps content that may be taller than the screen. Used in ItemDetailActivity so the user can scroll through all item details.
+
+---
+
+## 4. Intents — How Screens Talk to Each Other
+
+**What it is:**  
+An `Intent` is a message object that describes an operation to be performed. It is the primary way Activities communicate — either to start another Activity or to ask another app to do something.
+
+### Explicit Intents — Going to a specific screen
+You know exactly which Activity you want to open. You specify the class directly:
+```java
+Intent intent = new Intent(this, ItemDetailActivity.class);
+intent.putExtra("item_id", "abc123");    // attach data
+intent.putExtra("item_type", "lost");
+startActivity(intent);
+```
+`putExtra` attaches key-value data to the intent. The receiving Activity reads it:
+```java
+String itemId = getIntent().getStringExtra("item_id");
+```
+
+### Implicit Intents — Asking the OS to find an app
+You describe what you want done but don't specify which app does it. The OS shows a chooser if multiple apps can handle it.
+
+**Open WhatsApp with a pre-filled message:**
+```java
+Intent intent = new Intent(Intent.ACTION_VIEW,
+    Uri.parse("https://wa.me/919876543210?text=Hi!"));
+intent.setPackage("com.whatsapp"); // specifically target WhatsApp
+startActivity(intent);
+```
+If WhatsApp isn't installed, `ActivityNotFoundException` is thrown — we catch it and fall back to opening the URL in a browser.
+
+**Pick an image from the gallery:**
 ```java
 Intent intent = new Intent(Intent.ACTION_PICK,
     MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-startActivityForResult(intent, RC_IMAGE_PICK);
+startActivityForResult(intent, 200); // 200 = request code to identify this request
 ```
-The OS presents a chooser; the user picks an image; the URI is returned to `onActivityResult`.
 
-**Camera capture**:
+**Share text to any app:**
 ```java
-Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-intent.putExtra(MediaStore.EXTRA_OUTPUT, photoUri);
-startActivityForResult(intent, RC_IMAGE_CAPTURE);
+Intent shareIntent = new Intent(Intent.ACTION_SEND);
+shareIntent.putExtra(Intent.EXTRA_TEXT, "Lab record found at RVCE...");
+shareIntent.setType("text/plain");
+startActivity(Intent.createChooser(shareIntent, "Share via"));
 ```
 
-**WhatsApp contact** — `ItemDetailActivity`:
+### Getting results back — startActivityForResult + onActivityResult
+When you start an Activity and need a result back (like a selected photo or a picked location), use `startActivityForResult()`. When that Activity calls `setResult(RESULT_OK, data)` and `finish()`, your `onActivityResult` is called:
 ```java
-Intent intent = new Intent(Intent.ACTION_VIEW,
-    Uri.parse("https://wa.me/" + phone + "?text=" + Uri.encode(message)));
-intent.setPackage("com.whatsapp"); // targets WhatsApp specifically
-startActivity(intent);
+@Override
+protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+    if (requestCode == 203 && resultCode == RESULT_OK) {
+        double lat = data.getDoubleExtra("extra_lat", 0);
+        double lng = data.getDoubleExtra("extra_lng", 0);
+        String address = data.getStringExtra("extra_location_name");
+    }
+}
 ```
-If WhatsApp is not installed, `ActivityNotFoundException` is caught and the URL is opened in the browser instead.
+The `requestCode` tells you which Activity returned (203 = LocationPickerActivity, 200 = image picker).
 
-**Share intent** — `ItemDetailActivity`:
-```java
-Intent sendIntent = new Intent(Intent.ACTION_SEND);
-sendIntent.putExtra(Intent.EXTRA_TEXT, shareText);
-sendIntent.setType("text/plain");
-startActivity(Intent.createChooser(sendIntent, "Share Item Details via"));
-```
-
-### Deep-link Intent
-`ItemDetailActivity` is declared with an intent filter in `AndroidManifest.xml`:
+### Deep Link Intent — Opening from a notification
+`ItemDetailActivity` is declared with a URI scheme in the manifest:
 ```xml
-<intent-filter>
-    <action android:name="android.intent.action.VIEW" />
-    <category android:name="android.intent.category.DEFAULT" />
-    <data android:scheme="lostandfound" android:host="item" />
-</intent-filter>
+<data android:scheme="lostandfound" android:host="item" />
 ```
-This allows FCM notifications to open a specific item by URI: `lostandfound://item?id=abc&type=lost`. The Activity reads these from `getIntent().getData()`.
-
----
-
-## 4. ViewModel and LiveData
-
-### ViewModel
-`ViewModel` is a Jetpack class that stores and manages UI-related data in a lifecycle-conscious way. It is scoped to the Activity/Fragment and survives configuration changes.
-
+This means the OS can open this Activity using a URL like `lostandfound://item?id=abc&type=lost`. FCM notifications use this to open a specific item when tapped:
 ```java
-FeedViewModel vm = new ViewModelProvider(this).get(FeedViewModel.class);
-```
-
-`ViewModelProvider` returns the same ViewModel instance for the same scope, so calling this in `onCreate` after rotation returns the existing ViewModel with the data already loaded.
-
-### LiveData
-`LiveData` is an observable data holder that is lifecycle-aware. Observers registered with `observe(lifecycleOwner, observer)` are only called when the lifecycle owner (Activity) is in the STARTED or RESUMED state. They are automatically removed when the lifecycle owner is destroyed — preventing memory leaks.
-
-```java
-vm.getAllCachedItems().observe(this, items -> {
-    adapter.setItems(items);
-    tvEmptyState.setVisibility(items.isEmpty() ? View.VISIBLE : View.GONE);
-});
-```
-
-`getAllCachedItems()` returns `LiveData<List<ItemEntity>>` from Room. Room automatically emits new values whenever the underlying table changes — the UI updates without any polling.
-
-### MutableLiveData
-Used in `ReportViewModel` to communicate submission status back to the Activity:
-```java
-public final MutableLiveData<String> postStatus = new MutableLiveData<>();
-public final MutableLiveData<Boolean> isLoading = new MutableLiveData<>(false);
-```
-The Activity observes `postStatus` and shows success/error feedback.
-
----
-
-## 5. RecyclerView, Adapter, and ViewHolder
-
-### RecyclerView
-`RecyclerView` is the modern replacement for `ListView`. It recycles (reuses) item views as the user scrolls, making it memory-efficient even for very large lists.
-
-Setup in `MainActivity`:
-```java
-recyclerView.setLayoutManager(new LinearLayoutManager(this));
-recyclerView.setAdapter(adapter);
-```
-
-`LinearLayoutManager` arranges items in a vertical scrolling list.
-
-### Adapter
-`ItemAdapter` extends `RecyclerView.Adapter<ItemAdapter.ItemViewHolder>`. It is responsible for:
-1. Creating ViewHolder instances (`onCreateViewHolder`) — inflates `item_feed_card.xml`
-2. Binding data to views (`onBindViewHolder`) — sets text, colors, image
-3. Reporting item count (`getItemCount`)
-
-### ViewHolder Pattern
-The ViewHolder holds references to the views within a single list item. Without the ViewHolder pattern, `findViewById()` would be called on every bind — expensive. With ViewHolder, `findViewById()` is called only once per item view creation.
-
-```java
-static class ItemViewHolder extends RecyclerView.ViewHolder {
-    TextView tvTitle, tvStatus, tvCategory, tvLocation, tvDate, tvType;
-    ImageView imgPhoto;
-    // References cached here — not looked up again on every bind
+// In ItemDetailActivity onCreate:
+Uri data = getIntent().getData();
+if (data != null) {
+    itemId = data.getQueryParameter("id");
+    itemType = data.getQueryParameter("type");
 }
 ```
 
-### DiffUtil
-`ItemAdapter` uses `DiffUtil` in `setItems()` to compute the minimal set of changes between the old and new list. Instead of calling `notifyDataSetChanged()` (which redraws everything), DiffUtil triggers targeted `notifyItemInserted`, `notifyItemRemoved`, `notifyItemChanged` calls — resulting in smooth animations.
+---
+
+## 5. SharedPreferences — Remembering Small Pieces of Data
+
+**What it is:**  
+`SharedPreferences` is Android's built-in key-value store for small persistent data. Think of it as a persistent `HashMap<String, Object>` that survives app restarts.
+
+**Why we need it:**  
+When the user logs in with Google, we don't want them to have to log in again every time they open the app. We save their session details to SharedPreferences.
+
+**How `SessionManager` uses it:**
+```java
+// Saving session after login:
+SharedPreferences.Editor editor = prefs.edit();
+editor.putString("userId", uid);
+editor.putString("userName", "Manish Tandurkar");
+editor.putBoolean("isLoggedIn", true);
+editor.apply(); // saves asynchronously
+```
 
 ```java
-DiffUtil.DiffResult result = DiffUtil.calculateDiff(new DiffUtil.Callback() {
-    @Override public int getOldListSize() { return oldList.size(); }
-    @Override public int getNewListSize() { return newList.size(); }
-    @Override public boolean areItemsTheSame(int o, int n) {
-        return oldList.get(o).id.equals(newList.get(n).id);
-    }
-    @Override public boolean areContentsTheSame(int o, int n) {
-        return oldList.get(o).status.equals(newList.get(n).status);
+// Reading on next app launch:
+boolean loggedIn = prefs.getBoolean("isLoggedIn", false); // false = default
+String userId = prefs.getString("userId", null);
+```
+
+**SplashActivity** reads `isLoggedIn` and routes accordingly:
+- `true` → go to `MainActivity` (skip login)
+- `false` → go to `LoginActivity`
+
+`NewItemWorker` also uses SharedPreferences to store the timestamp of the last notification check, so it only notifies about truly new items.
+
+---
+
+## 6. MVVM Architecture — Keeping Code Organized
+
+**The problem without architecture:**  
+If you put everything in an Activity — network calls, database queries, UI updates, business logic — the Activity becomes enormous (1000+ lines), hard to test, and breaks on screen rotation.
+
+**MVVM (Model-View-ViewModel)** separates concerns into three layers:
+
+```
+┌─────────────────────────────────┐
+│  VIEW (Activity)                │  ← Only handles UI: shows data, receives taps
+│  Observes LiveData              │
+└────────────────┬────────────────┘
+                 │ observes
+┌────────────────▼────────────────┐
+│  VIEWMODEL                      │  ← Holds UI data, survives rotation
+│  Calls Repository               │
+└────────────────┬────────────────┘
+                 │ calls
+┌────────────────▼────────────────┐
+│  REPOSITORY                     │  ← Decides: Firebase or Room cache?
+└───────────┬─────────────────────┘
+            │              │
+   ┌────────▼──────┐  ┌────▼──────────┐
+   │  Firebase     │  │  Room (local) │
+   └───────────────┘  └───────────────┘
+```
+
+**ViewModel** — A class that holds data for the UI. The crucial property: it **survives screen rotation**. When you rotate the phone, Android destroys and recreates the Activity, but the ViewModel is kept alive. The Activity simply re-observes the same ViewModel.
+
+```java
+// Activity gets the ViewModel (same instance after rotation):
+FeedViewModel vm = new ViewModelProvider(this).get(FeedViewModel.class);
+```
+
+**LiveData** — An observable data wrapper. The Activity registers as an observer:
+```java
+vm.getAllCachedItems().observe(this, items -> {
+    // This runs whenever 'items' changes
+    adapter.setItems(items);
+});
+```
+LiveData is **lifecycle-aware** — it only delivers updates when the Activity is visible (STARTED/RESUMED state). When the Activity is destroyed, the observer is automatically removed, preventing memory leaks. You never need to manually unsubscribe.
+
+**MutableLiveData** — A LiveData that the ViewModel can set values on. Used in `ReportViewModel` to tell the Activity whether the post succeeded or failed:
+```java
+// In ViewModel:
+public MutableLiveData<String> postStatus = new MutableLiveData<>();
+
+// After Firebase write succeeds:
+postStatus.postValue("success:" + itemId);
+```
+```java
+// In Activity:
+vm.postStatus.observe(this, status -> {
+    if (status.startsWith("success")) {
+        finish(); // go back
+    } else {
+        showError(status);
     }
 });
-result.dispatchUpdatesTo(this);
 ```
 
 ---
 
-## 6. Room Database (SQLite Persistence)
+## 7. RecyclerView — Displaying a Scrollable List Efficiently
 
-### What is Room?
-Room is a Jetpack abstraction layer over SQLite. It provides compile-time SQL verification, LiveData integration, and a clean DAO (Data Access Object) pattern.
+**The problem:**  
+The feed may have 100+ items. Creating 100 views at once would use enormous memory. `RecyclerView` solves this by only creating enough views to fill the screen (~10), then **recycling** (reusing) them as the user scrolls. When a card scrolls off the top, it is moved to the bottom and its data is updated.
 
-### Components
+**Three parts of RecyclerView:**
 
-**Entity — `ItemEntity`**  
-A Java class annotated with `@Entity(tableName = "items_cache")`. Each field annotated with `@ColumnInfo` maps to a database column. The `@PrimaryKey` annotation marks the primary key.
+### LayoutManager
+Decides how items are arranged. We use `LinearLayoutManager` for a vertical scrolling list:
+```java
+recyclerView.setLayoutManager(new LinearLayoutManager(this));
+```
 
+### ViewHolder
+A ViewHolder holds references to the views inside one list item card. Without it, `findViewById()` would be called on every single bind — slow. With ViewHolder, references are cached once per card view:
+```java
+static class ItemViewHolder extends RecyclerView.ViewHolder {
+    TextView tvTitle, tvCategory, tvLocation, tvDate, tvType, tvStatus;
+    ImageView imgPhoto;
+    
+    ItemViewHolder(View itemView) {
+        super(itemView);
+        tvTitle = itemView.findViewById(R.id.tvItemTitle); // cached once
+        tvCategory = itemView.findViewById(R.id.tvItemCategory);
+        // ...
+    }
+}
+```
+
+### Adapter
+The adapter is the bridge between the data list and the RecyclerView. It has three jobs:
+1. **`onCreateViewHolder`** — inflate the XML card layout and create a ViewHolder (called ~10 times to fill screen)
+2. **`onBindViewHolder`** — fill a recycled card with new data (called every time a card becomes visible)
+3. **`getItemCount`** — tell RecyclerView how many items exist
+
+```java
+@Override
+public void onBindViewHolder(ItemViewHolder holder, int position) {
+    ItemEntity item = items.get(position);
+    holder.tvTitle.setText(item.title);
+    holder.tvCategory.setText(item.category);
+    // set colors, load image, etc.
+}
+```
+
+### DiffUtil — Smart list updates
+Instead of calling `notifyDataSetChanged()` (which redraws every card), we use `DiffUtil` to compute exactly which items were added, removed, or changed. Only those specific cards are redrawn, giving smooth animations:
+```java
+// DiffUtil compares old and new lists:
+// "Item at position 2 changed status" → only that card animates
+DiffUtil.DiffResult result = DiffUtil.calculateDiff(callback);
+result.dispatchUpdatesTo(this); // triggers targeted notify calls
+```
+
+---
+
+## 8. Room Database — Offline Data Storage
+
+**What it is:**  
+Room is Android's official library for storing structured data in a local SQLite database. SQLite is a lightweight database that lives entirely on the phone — no internet required.
+
+**Why this app needs it:**  
+When the user has no internet connection, the app still shows previously loaded items. Room stores a local copy (cache) of all Firebase items.
+
+**Three components of Room:**
+
+### Entity — What to store
+An Entity is a Java class that maps to a database table. Each field maps to a column:
 ```java
 @Entity(tableName = "items_cache")
 public class ItemEntity {
     @PrimaryKey @NonNull
-    @ColumnInfo(name = "id") public String id;
-    @ColumnInfo(name = "posted_by_name") public String postedByName;
-    // ...
+    public String id;          // column: id (primary key)
+    
+    public String title;       // column: title
+    public String type;        // column: type ("lost" or "found")
+    public String status;      // column: status ("active" or "resolved")
+    public String postedByName;// column: posted_by_name
+    public long timestamp;     // column: timestamp
+    // ... more fields
 }
 ```
 
-**DAO — `ItemDao`**  
-An interface annotated with `@Dao`. Methods annotated with `@Query`, `@Insert`, `@Delete`, `@Update` define database operations. Room generates the implementation at compile time.
-
+### DAO (Data Access Object) — How to query
+The DAO is an interface where you define your database operations as annotated methods. Room generates the actual SQL implementation at compile time — you never write raw SQL:
 ```java
 @Dao
 public interface ItemDao {
     @Query("SELECT * FROM items_cache ORDER BY timestamp DESC")
-    LiveData<List<ItemEntity>> getAllItems();
-
+    LiveData<List<ItemEntity>> getAllItems(); // returns LiveData — auto-updates UI!
+    
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void insertAll(List<ItemEntity> items);
-
-    @Query("DELETE FROM items_cache") void deleteAll();
+    void insertAll(List<ItemEntity> items); // insert or update
+    
+    @Query("DELETE FROM items_cache")
+    void deleteAll();
+    
+    @Query("SELECT * FROM items_cache WHERE posted_by = :userId")
+    LiveData<List<ItemEntity>> getItemsByUser(String userId);
 }
 ```
+The `@Query` with `LiveData` return type is powerful — Room automatically re-runs the query and emits a new value whenever the table data changes. The UI observing this LiveData updates automatically.
 
-**Database — `AppDatabase`**  
-Singleton class annotated with `@Database`. The `version` field must be incremented when the schema changes. `fallbackToDestructiveMigration()` means a schema change wipes and re-syncs the cache rather than running a migration script — appropriate here since the cache can always be re-populated from Firebase.
-
+### Database — The database instance
 ```java
 @Database(entities = {ItemEntity.class}, version = 2, exportSchema = false)
 public abstract class AppDatabase extends RoomDatabase {
     public abstract ItemDao itemDao();
+    
+    public static AppDatabase getInstance(Context context) {
+        // Singleton pattern — only one database instance per app
+        if (INSTANCE == null) {
+            INSTANCE = Room.databaseBuilder(context, AppDatabase.class, "lost_and_found_db")
+                .fallbackToDestructiveMigration() // on schema change, wipe and re-sync
+                .build();
+        }
+        return INSTANCE;
+    }
 }
 ```
+`version = 2` — the schema version number. If you add a new column (like we added `posted_by_name`), you must increment this. With `fallbackToDestructiveMigration()`, Room simply drops and recreates the table — fine here since everything can be re-synced from Firebase.
 
-### Why separate `Item` and `ItemEntity`?
-`Item` is a POJO deserialized by Firebase using getter/setter reflection. `ItemEntity` is a Room entity. They have different requirements (Firebase needs a no-arg constructor and specific getter names; Room needs `@ColumnInfo` annotations), so keeping them separate avoids coupling the two data layers.
+**Important:** Room does not allow database access on the main (UI) thread. It would throw an `IllegalStateException`. All Room writes use an `Executor` to run on a background thread (see Section 17).
 
 ---
 
-## 7. Firebase Realtime Database
+## 9. Firebase Realtime Database — Cloud Storage
 
-### Structure
-Data is stored as a JSON tree. Two top-level nodes: `lost_items` and `found_items`. Each item is a child node with a Firebase auto-generated push key as its ID.
+**What it is:**  
+Firebase Realtime Database (RTDB) is a cloud-hosted NoSQL database. Data is stored as a JSON tree and synchronized in real time across all connected clients.
 
-### Writing data — `setValue()`
-```java
-DatabaseReference itemRef = dbRef.child("lost_items").push();
-item.setId(itemRef.getKey()); // auto-generated push key
-itemRef.setValue(item);       // serializes all getter values to JSON
+**Structure used in this app:**
 ```
-Firebase serializes the `Item` object by calling all `getXxx()` methods and using the property name (lowercase first letter) as the JSON key. This is why getter names must match field names exactly — `getPostedByName()` → `postedByName` in the database.
+root/
+├── users/
+│   └── {userId}/           ← one entry per user
+│       ├── name: "Manish"
+│       └── fcmToken: "abc..."
+│
+├── lost_items/
+│   └── {auto-generated-id}/
+│       ├── title: "Pen"
+│       ├── status: "active"
+│       ├── postedBy: "uid123"
+│       ├── postedByName: "Manish Tandurkar"
+│       └── timestamp: 1718000000000
+│
+└── found_items/
+    └── {auto-generated-id}/   ← same structure
+```
 
-### Reading data — `addListenerForSingleValueEvent()`
+**Writing an item:**
 ```java
-dbRef.child("lost_items").child(itemId)
+DatabaseReference ref = FirebaseDatabase.getInstance(DB_URL).getReference();
+DatabaseReference itemRef = ref.child("lost_items").push(); // generates unique ID
+item.setId(itemRef.getKey()); // store the ID back in the object
+itemRef.setValue(item);       // serializes all getXxx() methods to JSON
+```
+Firebase serializes the `Item` Java object by calling all getter methods. `getTitle()` → stores as `"title"` in JSON. `getPostedByName()` → stores as `"postedByName"`. This is why getter method names must match field names exactly.
+
+**Reading an item once:**
+```java
+ref.child("lost_items").child(itemId)
     .addListenerForSingleValueEvent(new ValueEventListener() {
         @Override
         public void onDataChange(DataSnapshot snapshot) {
-            Item item = snapshot.getValue(Item.class);
-            // Firebase deserializes JSON → Item using setter methods
+            Item item = snapshot.getValue(Item.class); // deserializes JSON → Item
+            item.setId(snapshot.getKey());
         }
         @Override
         public void onCancelled(DatabaseError error) { }
     });
 ```
 
-`addListenerForSingleValueEvent` reads once. `addValueEventListener` would subscribe to real-time updates.
-
-### Concurrency in sync
-`ItemRepository.syncFromFirebase()` fires two Firebase queries simultaneously (lost_items + found_items) using a counter array `int[] pendingRequests = {2}`. When both callbacks complete (counter hits 0), `persistAndNotify()` writes to Room on a background thread via `Executor`.
-
----
-
-## 8. Firebase Authentication + Google Sign-In
-
-### Flow
-1. `GoogleSignInClient` is configured with `requestIdToken` pointing to the Firebase web client ID
-2. `startActivityForResult(googleSignInClient.getSignInIntent(), RC_SIGN_IN)` launches Google's account picker
-3. `onActivityResult` receives the result; `GoogleSignIn.getSignedInAccountFromIntent(data)` extracts the account
-4. Domain restriction: `email.endsWith("@rvce.edu.in")` — if false, `firebaseAuth.signOut()` is called immediately
-5. `firebaseAuth.signInWithCredential(GoogleAuthProvider.getCredential(idToken, null))` exchanges the Google token for a Firebase session
-6. On success, `UserRepository.createOrUpdateUser()` writes the profile to `/users/{uid}`, then `SessionManager.saveSession()` stores the user in SharedPreferences
-
-### SharedPreferences Session
-`SessionManager` wraps `SharedPreferences` to persist the user's ID, name, email, and photo URL across app restarts. `SplashActivity` reads `isLoggedIn` from SharedPreferences and skips the login screen if the session is active.
+**Updating one field:**
+```java
+ref.child("lost_items").child(itemId).child("status").setValue("resolved");
+```
+This only updates the `status` field — it does not overwrite the entire item.
 
 ---
 
-## 9. Firebase Cloud Messaging (FCM)
+## 10. Firebase Authentication — Who Is the User?
 
-### Topic-based messaging
-All users subscribe to topic `new_items` on app launch:
+**The flow:**
+
+1. User taps "Sign in with Google"
+2. `GoogleSignInClient` opens Google's account picker (a system screen, not our UI)
+3. User selects their Google account
+4. Google returns an `idToken` to our app in `onActivityResult`
+5. We pass the token to Firebase: `firebaseAuth.signInWithCredential(GoogleAuthProvider.getCredential(idToken, null))`
+6. Firebase validates the token with Google's servers and creates a Firebase user session
+7. We check the email domain — only `rvce.edu.in` is allowed:
+```java
+if (!email.endsWith("@rvce.edu.in")) {
+    firebaseAuth.signOut();
+    // show error: "Only rvce.edu.in accounts are allowed"
+    return;
+}
+```
+8. If allowed, we save the user's name, email, and photo to `/users/{uid}` in Firebase and to `SessionManager` (SharedPreferences)
+
+This domain restriction ensures that only RVCE students can use the app. However, this check runs in the app code (client side). Firebase Security Rules should also enforce this on the server side for complete protection.
+
+---
+
+## 11. Firebase Cloud Messaging (FCM) — Push Notifications
+
+**What it is:**  
+FCM is Google's service for sending push notifications to Android devices. Notifications can be sent even when the app is closed.
+
+**Two components in this app:**
+
+### Topic subscription
+All users subscribe to the topic `new_items` when the app starts:
 ```java
 FirebaseMessaging.getInstance().subscribeToTopic("new_items");
 ```
-When a Cloud Function or server sends a message to this topic, all subscribed devices receive it.
+A "topic" is like a mailing list. Any message sent to `new_items` is delivered to all subscribed devices. This means when a new item is posted, every app user gets a notification.
 
 ### FCMService
-`FCMService extends FirebaseMessagingService`. Two overridden methods:
+`FCMService extends FirebaseMessagingService`. This service runs in the background and is called by the Firebase SDK when a message arrives.
 
-**`onMessageReceived(RemoteMessage)`**  
-Called when a message arrives while the app is in the foreground. Builds and displays a local `NotificationCompat.Builder` notification. The notification's tap Intent deep-links to `ItemDetailActivity` using the `lostandfound://item` URI scheme.
+```java
+@Override
+public void onMessageReceived(RemoteMessage remoteMessage) {
+    // Build and show a notification:
+    NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
+        .setSmallIcon(R.drawable.ic_notification)
+        .setContentTitle(remoteMessage.getNotification().getTitle())
+        .setContentText(remoteMessage.getNotification().getBody())
+        .setContentIntent(pendingIntent); // opens ItemDetailActivity when tapped
+    
+    NotificationManagerCompat.from(this).notify(notificationId, builder.build());
+}
+```
 
-**`onNewToken(String)`**  
-Called when FCM generates a new registration token. The token is saved to `/users/{uid}/fcmToken` in Firebase so the server can target this specific device for direct messages.
-
-### Notification Channel
-Android 8.0+ (API 26+) requires a `NotificationChannel` before notifications can be shown. The channel is created in `FCMService.onCreate()`:
+**Notification Channel** — Android 8.0+ requires all notifications to belong to a `NotificationChannel`. Channels let users control notification behaviour (sound, vibration, importance) per category. This is created once:
 ```java
 NotificationChannel channel = new NotificationChannel(
-    Constants.CHANNEL_ID,
-    Constants.CHANNEL_NAME,
+    "lost_found_channel",
+    "Lost & Found Notifications",
     NotificationManager.IMPORTANCE_DEFAULT
 );
 notificationManager.createNotificationChannel(channel);
 ```
 
----
-
-## 10. WorkManager
-
-### Why WorkManager?
-WorkManager is the Jetpack solution for deferrable, guaranteed background work. It respects battery optimization (Doze mode) and survives app restarts. Unlike `AlarmManager` or raw `Thread`, WorkManager guarantees execution even if the app is killed.
-
-### NewItemWorker
-`NewItemWorker extends Worker` and overrides `doWork()`. This runs on a background thread managed by WorkManager.
-
-```java
-public Result doWork() {
-    SharedPreferences prefs = getApplicationContext()
-        .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-    long lastCheck = prefs.getLong(KEY_LAST_CHECK,
-        System.currentTimeMillis() - DEFAULT_LOOKBACK_MS);
-
-    // Query Firebase for items newer than lastCheck
-    CountDownLatch latch = new CountDownLatch(2);
-    // ... Firebase queries with latch.countDown() on completion
-    latch.await(20, TimeUnit.SECONDS); // blocks worker thread
-
-    // Fire local notifications for new items
-    // Update lastCheck in SharedPreferences
-    return Result.success();
-}
-```
-
-**CountDownLatch** is a Java concurrency tool. Initialized with count 2 (one for lost_items, one for found_items queries). Each Firebase callback calls `latch.countDown()`. `latch.await(20, SECONDS)` blocks the worker thread until both queries complete or 20 seconds elapse — safely synchronizing async Firebase calls in a synchronous Worker context.
-
-### Scheduling
-```java
-WorkManager.getInstance(this).enqueueUniquePeriodicWork(
-    "new_item_check",
-    ExistingPeriodicWorkPolicy.KEEP, // don't reschedule if already queued
-    new PeriodicWorkRequest.Builder(NewItemWorker.class, 15, TimeUnit.MINUTES).build()
-);
-```
-`enqueueUniquePeriodicWork` with `KEEP` policy ensures only one instance of the worker runs — calling it again (e.g., on every app launch) does nothing if the work is already scheduled.
-
-The 15-minute interval is the minimum Android allows for `PeriodicWorkRequest`. The OS may delay execution to batch with other work for battery efficiency.
+**Device token** — Each device has a unique FCM token. When the token is refreshed, `onNewToken(String token)` is called. We save it to `/users/{uid}/fcmToken` so the server can send notifications to a specific device.
 
 ---
 
-## 11. BroadcastReceiver
+## 12. WorkManager — Reliable Background Tasks
 
-### NetworkReceiver
-`NetworkReceiver extends BroadcastReceiver` listens for `android.net.conn.CONNECTIVITY_CHANGE` and `android.intent.action.BOOT_COMPLETED`.
+**The problem:**  
+We want the app to periodically check Firebase for new items and show a notification — even when the app is not open. Simply starting a `Thread` or `Service` won't work reliably: Android kills background processes to save battery (Doze mode), and the task is lost after a device restart.
 
+**WorkManager** is Android's solution for guaranteed background work. It respects battery optimization, survives app restarts, and reschedules tasks after a reboot.
+
+**NewItemWorker:**
 ```java
-@Override
-public void onReceive(Context context, Intent intent) {
-    if (NetworkUtils.isOnline(context)) {
-        // Trigger Firebase sync via ItemRepository
+public class NewItemWorker extends Worker {
+    @Override
+    public Result doWork() {
+        // This runs on a background thread, guaranteed by WorkManager
+        
+        // 1. Get the timestamp of our last check
+        SharedPreferences prefs = getApplicationContext()
+            .getSharedPreferences("NewItemWorkerPrefs", MODE_PRIVATE);
+        long lastCheck = prefs.getLong("last_check_ts", 15_minutes_ago);
+        
+        // 2. Query Firebase for items newer than lastCheck
+        // 3. Show a notification for each new item
+        // 4. Save the current time as the new lastCheck
+        
+        return Result.success();
     }
 }
 ```
 
-Registered statically in `AndroidManifest.xml` (not dynamically in an Activity) so it receives broadcasts even when the app is not running. `RECEIVE_BOOT_COMPLETED` allows it to re-register after device reboot.
+**Scheduling it:**
+```java
+WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+    "new_item_check",                       // unique name — only one instance runs at a time
+    ExistingPeriodicWorkPolicy.KEEP,        // if already scheduled, don't reschedule
+    new PeriodicWorkRequest.Builder(NewItemWorker.class, 15, TimeUnit.MINUTES).build()
+);
+```
+15 minutes is the minimum interval Android allows. The OS may delay slightly to batch with other background work.
 
-**Important:** `onReceive()` runs on the main thread and must complete quickly (< 10 seconds). Long operations (Firebase sync) should be offloaded to a Service or WorkManager job.
+**CountDownLatch — Synchronizing async Firebase calls:**  
+`doWork()` runs synchronously (must return `Result` when done). But Firebase calls are asynchronous (callbacks). We use `CountDownLatch` to bridge them:
+```java
+CountDownLatch latch = new CountDownLatch(2); // wait for 2 things
+
+// Query 1: lost_items
+db.child("lost_items").addListenerForSingleValueEvent(new ValueEventListener() {
+    public void onDataChange(DataSnapshot s) {
+        // process data...
+        latch.countDown(); // signal: query 1 done
+    }
+});
+// Query 2: found_items
+db.child("found_items").addListenerForSingleValueEvent(new ValueEventListener() {
+    public void onDataChange(DataSnapshot s) {
+        // process data...
+        latch.countDown(); // signal: query 2 done
+    }
+});
+
+latch.await(20, TimeUnit.SECONDS); // block until both queries complete (max 20s)
+```
 
 ---
 
-## 12. Background Service — MatchingService
+## 13. BroadcastReceiver — Listening for System Events
 
-### IntentService / Service
-`MatchingService extends Service`. It runs the keyword/category matching algorithm when a new item is posted.
+**What it is:**  
+A `BroadcastReceiver` listens for system-wide events (broadcasts) sent by Android or other apps. Your code runs when the event occurs.
 
-When `ReportViewModel` posts an item, it starts `MatchingService` via an explicit Intent with the new item's data as extras. The service queries Firebase for items of the opposite type, compares categories and title keywords, and sends an FCM notification to the matching item's owner.
+**NetworkReceiver** in this app listens for two events:
 
-Services run on the main thread by default. Long-running operations inside a Service must explicitly use a background thread or `Executors.newSingleThreadExecutor()` to avoid ANR (Application Not Responding) errors.
+1. `android.net.conn.CONNECTIVITY_CHANGE` — fired whenever the network state changes (connected/disconnected)
+2. `android.intent.action.BOOT_COMPLETED` — fired when the device finishes booting
+
+```java
+public class NetworkReceiver extends BroadcastReceiver {
+    @Override
+    public void onReceive(Context context, Intent intent) {
+        if (NetworkUtils.isOnline(context)) {
+            // Device just got internet back → sync Firebase to Room
+        }
+    }
+}
+```
+
+Registered in `AndroidManifest.xml` (static registration) — so it receives broadcasts even when the app is not running:
+```xml
+<receiver android:name=".receivers.NetworkReceiver">
+    <intent-filter>
+        <action android:name="android.net.conn.CONNECTIVITY_CHANGE" />
+        <action android:name="android.intent.action.BOOT_COMPLETED" />
+    </intent-filter>
+</receiver>
+```
+
+**Important:** `onReceive()` runs on the main (UI) thread and must complete in under 10 seconds. If we need to do longer work (like a Firebase sync), we start a `Service` or `WorkManager` job from here.
 
 ---
 
-## 13. Google Maps SDK
+## 14. Service — Background Processing
 
-### Map setup
-Maps are embedded as `SupportMapFragment` in XML layouts. The fragment is found via `getSupportFragmentManager().findFragmentById()` and `getMapAsync(callback)` is called to receive the `GoogleMap` instance asynchronously once tiles are loaded.
+**What it is:**  
+A `Service` runs code in the background without a UI. Unlike WorkManager (which is for periodic tasks), a `Service` is started explicitly to do a specific job.
+
+**MatchingService** runs the item-matching algorithm. When a new item is posted, `ReportViewModel` starts this service:
+```java
+Intent matchIntent = new Intent(context, MatchingService.class);
+matchIntent.putExtra("new_item_id", item.getId());
+context.startService(matchIntent);
+```
+
+The service queries Firebase for items of the opposite type, compares categories and keywords, and sends an FCM notification to the owner of any matching item.
+
+**Thread warning:** A `Service` runs on the main thread by default — long operations (network calls) must be moved to a background thread using `Executor` or a worker thread to avoid freezing the UI.
+
+---
+
+## 15. Google Maps SDK — Interactive Maps
+
+**Embedding a map:**  
+Maps are added to layouts using `SupportMapFragment`. The fragment handles all the map tile loading. You request the `GoogleMap` object asynchronously:
 
 ```java
 SupportMapFragment mapFragment =
     (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
-mapFragment.getMapAsync(this); // 'this' implements OnMapReadyCallback
+mapFragment.getMapAsync(this); // calls onMapReady when ready
 ```
 
 ```java
 @Override
 public void onMapReady(GoogleMap map) {
+    // The map is loaded and ready to use
     googleMap = map;
-    googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(RVCE, 16));
+    googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(
+        new LatLng(12.9231, 77.4987), // RVCE campus coordinates
+        16f                            // zoom level (higher = more zoomed in)
+    ));
 }
 ```
 
-### Camera control
-`CameraUpdateFactory.newLatLngZoom(latLng, zoom)` creates a camera update. Zoom level 16 shows individual buildings clearly. `moveCamera()` is instant; `animateCamera()` smoothly animates.
-
-### Markers
+**Adding markers:**
 ```java
 googleMap.addMarker(new MarkerOptions()
     .position(new LatLng(lat, lng))
-    .title("Item Title")
+    .title("Lab Record")
     .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)));
 ```
 
-In `MapActivity`, custom circular markers are drawn programmatically using `Canvas` and `Paint` on a `Bitmap`, then converted to `BitmapDescriptor` via `BitmapDescriptorFactory.fromBitmap()`.
+**Custom markers in MapActivity:**  
+Instead of the default red teardrop, we draw our own circular markers programmatically using Android's `Canvas` and `Paint` API:
+```java
+Bitmap bitmap = Bitmap.createBitmap(96, 96, Bitmap.Config.ARGB_8888);
+Canvas canvas = new Canvas(bitmap);
+Paint paint = new Paint();
+paint.setColor(Color.RED);
+canvas.drawCircle(48, 48, 44, paint); // draw a red circle
+// Add text "?" or "✓" on top...
+BitmapDescriptor icon = BitmapDescriptorFactory.fromBitmap(bitmap);
+```
 
-### InfoWindow
-`MapActivity` implements a custom `GoogleMap.InfoWindowAdapter` to inflate a custom `map_info_window.xml` layout for each marker popup, displaying item title, type badge, category, and location.
-
-### Map in ItemDetailActivity
-The detail screen embeds a non-interactive map fragment (`getUiSettings().setAllGesturesEnabled(false)`) to show a static pin at the item's location. If coordinates are `0,0` (no location), the map fragment is hidden with `View.GONE`.
-
-### LocationPickerActivity
-Implements an interactive pin-drop picker. `setOnMapClickListener` fires on every tap:
+**LocationPickerActivity** — pin-drop interaction:
 ```java
 googleMap.setOnMapClickListener(latLng -> {
-    googleMap.clear();
-    googleMap.addMarker(new MarkerOptions().position(latLng));
-    pickedLat = latLng.latitude;
-    pickedLng = latLng.longitude;
-    reverseGeocode(latLng); // runs on background thread
+    googleMap.clear();                              // remove previous pin
+    googleMap.addMarker(new MarkerOptions().position(latLng)); // place new pin
+    reverseGeocode(latLng);                         // get address from coordinates
 });
 ```
-`Geocoder.getFromLocation()` converts lat/lng to a human-readable address. This runs in a `new Thread()` because `Geocoder` is a blocking network call and must not run on the main thread.
+
+**Reverse Geocoding** — converting coordinates to a readable address:
+```java
+Geocoder geocoder = new Geocoder(this, Locale.getDefault());
+List<Address> results = geocoder.getFromLocation(lat, lng, 1);
+String address = results.get(0).getAddressLine(0); // "RVCE, Mysore Road..."
+```
+This is a network call and runs on a background `Thread`, then posts the result back to the main thread with `runOnUiThread()`.
 
 ---
 
-## 14. Material Design 3 and Theming
+## 16. Material Design 3 and Theming
 
-### DayNight Theme
-The base theme is `Theme.Material3.DayNight.NoActionBar`. Material3 DayNight automatically selects light or dark color roles based on the system setting. `LostAndFoundApp.onCreate()` calls:
+**What is Material Design?**  
+Material Design is Google's design language — a set of rules for how apps should look and behave (spacing, colors, typography, animations). Material 3 is the latest version, built into the `com.google.android.material` library.
+
+**Components used:**
+- `MaterialToolbar` — the top app bar with title and navigation icon
+- `MaterialButton` — styled buttons (filled, outlined, text variants)
+- `MaterialCardView` — cards with rounded corners and elevation
+- `Chip` + `ChipGroup` — the filter pills (All / Lost / Found / My Posts)
+- `BottomNavigationView` — the bottom tab bar
+- `NavigationView` — the side drawer panel
+- `Snackbar` — the pop-up message bar at the bottom (with optional action button)
+- `BottomSheetDialog` — the panel that slides up from the bottom
+
+**DayNight Theme — automatic dark/light mode:**
+
+The app theme is `Theme.Material3.DayNight.NoActionBar`. "DayNight" means Material3 automatically switches between light and dark color schemes based on the phone's system setting.
+
+To make the app follow the system setting:
 ```java
+// In LostAndFoundApp (runs before any Activity):
 AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
 ```
-This ensures the mode is applied before any Activity is created.
 
-### Resource qualifiers
-`res/values/colors.xml` defines light-mode semantic colors (`app_background`, `card_background`, etc.). `res/values-night/colors.xml` overrides the same color names with dark equivalents. Android's resource system automatically selects the correct file based on the system theme.
+**Color variants for light and dark mode:**
 
+We define two versions of every color:
 ```
-values/colors.xml         → used in light mode
-values-night/colors.xml   → used in dark mode
+res/values/colors.xml        → used when phone is in LIGHT mode
+res/values-night/colors.xml  → used when phone is in DARK mode
 ```
 
-All layout files reference `@color/app_background` instead of `#121212` — the OS resolves the correct value at runtime.
+Example:
+```xml
+<!-- res/values/colors.xml (light mode) -->
+<color name="app_background">#FAFAFA</color>  <!-- near white -->
+<color name="text_on_surface_primary">#212121</color>  <!-- near black -->
 
-### NoActionBar
-The theme uses `NoActionBar` so Activities can set up their own `MaterialToolbar` with `setSupportActionBar(toolbar)`. Using a theme with a built-in ActionBar AND calling `setSupportActionBar()` causes a runtime crash (`IllegalStateException`).
+<!-- res/values-night/colors.xml (dark mode) -->
+<color name="app_background">#121212</color>  <!-- near black -->
+<color name="text_on_surface_primary">#FFFFFF</color>  <!-- white -->
+```
 
-### MaterialCardView, MaterialButton, Chip
-All interactive UI elements use Material3 components which automatically adapt their color tokens (surface, onSurface, primary, etc.) to the active theme.
+In layouts, we always use the named color: `android:background="@color/app_background"`. Android picks the right file automatically — we never hardcode `#121212` or `#FFFFFF` in layouts.
 
-### Styles
-Chip filters use `@style/Widget.Material3.Chip.Filter`. The Outlined button style `@style/Widget.Material3.Button.OutlinedButton` is used for "Mark as Resolved". Text button `@style/Widget.Material3.Button.TextButton` is used for "Share".
+**NoActionBar** — The `NoActionBar` part means the theme does not provide a built-in action bar. Each Activity sets up its own `MaterialToolbar` with `setSupportActionBar(toolbar)`. If you forget `NoActionBar` but still call `setSupportActionBar()`, the app crashes at runtime with `IllegalStateException: This Activity already has an action bar`.
 
 ---
 
-## 15. Navigation Patterns
+## 17. The Application Class — App-wide Initialization
 
-### Navigation Drawer (DrawerLayout + NavigationView)
-`DrawerLayout` is the root view in `activity_main.xml`. It wraps the main content and a `NavigationView` (the drawer panel). The drawer slides in from the left.
+**What it is:**  
+`Application` is a base class that Android instantiates before any Activity, Service, or Receiver. There is exactly one instance per app process. Its `onCreate()` is the earliest point where your code can run.
 
-```java
-ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
-    this, drawerLayout, toolbar, R.string.nav_open, R.string.nav_close);
-drawerLayout.addDrawerListener(toggle);
-toggle.syncState(); // syncs the hamburger/arrow icon state
-```
-
-`NavigationView.setNavigationItemSelectedListener` handles drawer item taps. Returning `false` from this listener prevents the item from being marked as checked/highlighted — important here because all items launch other Activities and the user always returns to the same Feed state.
-
-### Bottom Navigation (BottomNavigationView)
-`BottomNavigationView` provides persistent access to three top-level destinations: Feed, Map, My Posts. The selected item is reset to Feed in `onResume()` so that after navigating to MapActivity or MyPostsActivity and pressing Back, the Feed tab appears selected.
-
-### Back Stack
-Each call to `startActivity()` pushes a new Activity onto the system back stack. `finish()` in `onSupportNavigateUp()` explicitly pops the current Activity. The Android back button automatically pops the top Activity unless overridden.
-
----
-
-## 16. Permissions
-
-### Runtime Permissions (API 23+)
-Dangerous permissions (location, camera, storage) must be requested at runtime. The app uses `ActivityCompat.requestPermissions()` and handles the result in `onRequestPermissionsResult()`.
-
-### Normal Permissions
-`INTERNET`, `ACCESS_NETWORK_STATE`, `RECEIVE_BOOT_COMPLETED` are normal permissions — granted automatically at install time, no runtime request needed.
-
-### POST_NOTIFICATIONS (API 33+)
-Android 13 introduced a runtime permission for showing notifications. The app declares and requests `POST_NOTIFICATIONS` before calling `NotificationManager.notify()`.
-
-### READ_MEDIA_IMAGES vs READ_EXTERNAL_STORAGE
-`READ_EXTERNAL_STORAGE` works for API ≤ 32. `READ_MEDIA_IMAGES` is the replacement for API ≥ 33. Both are declared in the manifest; the correct one is requested based on `Build.VERSION.SDK_INT` at runtime.
-
----
-
-## 17. Content Provider — Image Access
-
-When the user selects a photo from the gallery:
-```java
-Intent intent = new Intent(Intent.ACTION_PICK,
-    MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-startActivityForResult(intent, RC_IMAGE_PICK);
-```
-The returned URI (e.g., `content://media/external/images/media/42`) is a Content Provider URI. It cannot be used directly as a file path. It is passed to Firebase Storage's `putFile(uri)` which reads the bytes via the Content Resolver.
-
-For camera capture, a `FileProvider` URI is used:
-```java
-Uri photoUri = FileProvider.getUriForFile(this,
-    getPackageName() + ".fileprovider", photoFile);
-```
-`FileProvider` is a special Content Provider that exposes a private app file to the camera app without granting full storage access.
-
----
-
-## 18. AppCompatActivity and Toolbar
-
-All Activities extend `AppCompatActivity` instead of `Activity`. This provides:
-- `setSupportActionBar(toolbar)` — designates a `MaterialToolbar` as the action bar, giving it title, navigation icon, and options menu support
-- `getSupportActionBar().setDisplayHomeAsUpEnabled(true)` — shows the back arrow in the toolbar
-- Backward-compatible support for fragments, themes, and Material components on older Android versions
-
----
-
-## 19. Application Class — LostAndFoundApp
-
-`LostAndFoundApp extends Application`. The `Application` class has one instance per process and its `onCreate()` is called before any Activity. This is the correct place for app-wide initialization:
-
+**`LostAndFoundApp extends Application`:**
 ```java
 public class LostAndFoundApp extends Application {
     @Override
@@ -591,106 +803,283 @@ public class LostAndFoundApp extends Application {
 }
 ```
 
-Registered in `AndroidManifest.xml` via `android:name=".LostAndFoundApp"`. Without this, the OS instantiates the default `Application` class and the night mode setting would be applied too late (inside an Activity's `onCreate`), causing a flash of the wrong theme.
+Setting the night mode here ensures it is applied before any Activity's window is created — preventing a brief flash of the wrong theme.
+
+Registered in `AndroidManifest.xml`:
+```xml
+<application android:name=".LostAndFoundApp" ...>
+```
+Without this line, Android instantiates the default `Application` class and our `LostAndFoundApp.onCreate()` is never called.
 
 ---
 
-## 20. AndroidManifest.xml
+## 18. Permissions — Requesting Access to Device Features
 
-The manifest is the app's declaration file. It registers every component that Android needs to know about:
+Android divides permissions into two groups:
 
-- **Activities** — with `exported="true"` for the entry point (SplashActivity) and `exported="false"` for all others (cannot be launched by external apps)
-- **Services** — `MatchingService`, `FCMService`
-- **Receivers** — `NetworkReceiver` with its intent filter for connectivity and boot events
-- **Permissions** — all uses-permission declarations
-- **Meta-data** — `com.google.android.geo.API_KEY` for the Maps SDK
-- **Intent filters** — deep-link filter on `ItemDetailActivity` for `lostandfound://item` URIs
-- **Application-level theme** — `android:theme="@style/Theme.LostAndFound"` applied to all Activities unless overridden per-Activity
-- **FCM intent filter** on `FCMService` — `com.google.firebase.MESSAGING_EVENT` so Firebase knows which service to call for incoming messages
+**Normal permissions** — Low risk. Granted automatically at install. No user prompt needed.
+- `INTERNET` — access the network
+- `ACCESS_NETWORK_STATE` — check if online/offline
+- `RECEIVE_BOOT_COMPLETED` — receive the boot broadcast
 
----
+**Dangerous permissions** — Access private data or hardware. Must be requested at runtime; user sees a dialog.
+- `ACCESS_FINE_LOCATION` — GPS location (for map)
+- `CAMERA` — take photos
+- `READ_MEDIA_IMAGES` — access gallery photos (API 33+)
+- `POST_NOTIFICATIONS` — show notifications (API 33+)
 
-## 21. Gradle Build System
-
-The project uses Gradle with Kotlin DSL (`build.gradle.kts`). A version catalog (`gradle/libs.versions.toml`) centralizes all dependency versions:
-
-```toml
-[versions]
-workmanager = "2.9.1"
-
-[libraries]
-work-runtime = { group = "androidx.work", name = "work-runtime", version.ref = "workmanager" }
+Runtime permission request:
+```java
+if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+        != PackageManager.PERMISSION_GRANTED) {
+    ActivityCompat.requestPermissions(this,
+        new String[]{Manifest.permission.CAMERA}, RC_CAMERA_PERMISSION);
+}
 ```
 
-Dependencies are referenced as `implementation(libs.work.runtime)` in `app/build.gradle.kts`. This avoids version conflicts and makes upgrades a single-line change.
+Result callback:
+```java
+@Override
+public void onRequestPermissionsResult(int requestCode,
+        String[] permissions, int[] grantResults) {
+    if (requestCode == RC_CAMERA_PERMISSION) {
+        if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            openCamera();
+        } else {
+            // user denied — show explanation
+        }
+    }
+}
+```
 
-**`google-services` plugin** processes `google-services.json` and injects Firebase configuration into the build automatically.
+**`READ_MEDIA_IMAGES` vs `READ_EXTERNAL_STORAGE`:**  
+Android 13 (API 33) replaced the broad `READ_EXTERNAL_STORAGE` with the more specific `READ_MEDIA_IMAGES`. Both are declared in the manifest; the correct one is requested based on `Build.VERSION.SDK_INT` at runtime.
 
 ---
 
-## 22. Executor and Threading Model
+## 19. Content Provider — Accessing the Photo Gallery
 
-Android's main (UI) thread must never be blocked. Long-running operations use:
+**What it is:**  
+Android apps are sandboxed — they cannot directly access each other's files. A `ContentProvider` is the official mechanism for sharing data between apps. The Gallery app exposes photos through a ContentProvider; your app accesses them via a URI.
 
-**`Executor`** — `ItemRepository` uses `Executors.newSingleThreadExecutor()` for all Room write operations. Room enforces that database access must not happen on the main thread (throws `IllegalStateException` if attempted).
-
+**Picking a photo:**
 ```java
+Intent intent = new Intent(Intent.ACTION_PICK,
+    MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+startActivityForResult(intent, RC_IMAGE_PICK);
+```
+The Gallery returns a URI like `content://media/external/images/media/42`. This is not a file path — it is a reference into the Gallery's ContentProvider.
+
+**Using it with Firebase Storage:**  
+Firebase Storage's `putFile(uri)` reads bytes directly from this ContentProvider URI via the `ContentResolver`. We never need to know the actual file path.
+
+**FileProvider for camera:**  
+When capturing a photo, we need to give the Camera app a location to save the file. We cannot give it a path inside our private app folder. `FileProvider` is a special ContentProvider that wraps our private file and shares it safely:
+```java
+Uri photoUri = FileProvider.getUriForFile(this,
+    getPackageName() + ".fileprovider",
+    new File(getCacheDir(), "photo.jpg")
+);
+camerIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoUri);
+```
+
+---
+
+## 20. Threading — Keeping the UI Smooth
+
+**The golden rule:** Never do slow work on the main (UI) thread.
+
+Android draws the UI at 60 frames per second (16ms per frame). If the main thread is busy (network call, database query, file read), frames are dropped and the UI freezes. If the main thread is blocked for more than 5 seconds, Android shows an "App Not Responding" (ANR) dialog.
+
+**Three threading tools used in this app:**
+
+**`Executor`** — A thread pool for running Runnables on background threads. Used in `ItemRepository` for all Room database writes:
+```java
+Executor executor = Executors.newSingleThreadExecutor();
+
 executor.execute(() -> {
+    // This runs on a background thread
     itemDao.deleteAll();
     itemDao.insertAll(entities);
+    // callback.onSuccess() must be called on the right thread
 });
 ```
 
-**Background `Thread`** — `LocationPickerActivity` uses `new Thread(() -> { ... }).start()` for `Geocoder` calls, then posts the result back to the main thread with `runOnUiThread()`.
-
-**WorkManager thread** — `doWork()` in `NewItemWorker` already runs on a background thread managed by WorkManager's internal executor. No additional threading is needed there.
-
----
-
-## 23. Snackbar and User Feedback
-
-`Snackbar` is the Material Design replacement for `Toast`. Unlike a Toast, it is attached to a view, supports an action button, and respects the bottom navigation bar.
-
+**`new Thread()`** — A simple one-shot background thread. Used in `LocationPickerActivity` for `Geocoder`:
 ```java
-Snackbar.make(rootView, "Error loading item", Snackbar.LENGTH_LONG)
-    .setAction("Retry", v -> loadItem())
-    .show();
+new Thread(() -> {
+    String address = geocoder.getFromLocation(lat, lng, 1).get(0).getAddressLine(0);
+    runOnUiThread(() -> {
+        // Back on main thread — safe to update UI
+        tvAddress.setText(address);
+    });
+}).start();
 ```
 
-The `rootView` parameter determines where the Snackbar appears. Using `CoordinatorLayout` as the root allows the Snackbar to automatically dodge the `BottomNavigationView` via `CoordinatorLayout.Behavior`.
+**WorkManager's thread** — `doWork()` in `NewItemWorker` is already called on a WorkManager background thread. No additional threading needed.
+
+**`postValue()` vs `setValue()` on LiveData:**
+- `setValue()` — must be called from the main thread
+- `postValue()` — can be called from any thread (posts to main thread internally)
+
+In `ReportViewModel`, after Firebase callbacks (which run on the main thread), we use `postValue()` defensively since `isLoading` and `postStatus` may be updated from executor threads too.
 
 ---
 
-## 24. CoordinatorLayout and AppBarLayout
+## 21. CoordinatorLayout — Smart Layout Coordination
 
-`CoordinatorLayout` is a powerful `FrameLayout` subclass that enables coordinated behavior between child views.
+**The problem it solves:**  
+In screens with a toolbar at the top and a list below, content naturally goes under the toolbar. `CoordinatorLayout` solves this by coordinating behaviour between its children.
 
-`app:layout_behavior="@string/appbar_scrolling_view_behavior"` on a `RecyclerView` inside a `CoordinatorLayout` that has an `AppBarLayout` sibling causes the RecyclerView to automatically offset its top padding to account for the AppBar height. This prevents content from going behind the toolbar.
-
-`MyPostsActivity`, `MapActivity`, and `ItemDetailActivity` all use this pattern:
+**Used in MainActivity, MyPostsActivity, ItemDetailActivity, MapActivity:**
 ```xml
 <CoordinatorLayout>
     <AppBarLayout>
-        <MaterialToolbar />
+        <MaterialToolbar />       <!-- the toolbar -->
     </AppBarLayout>
-    <RecyclerView app:layout_behavior="@string/appbar_scrolling_view_behavior" />
+    
+    <RecyclerView
+        app:layout_behavior="@string/appbar_scrolling_view_behavior" />
+        <!-- ↑ This attribute tells the RecyclerView to start below the AppBarLayout -->
 </CoordinatorLayout>
+```
+
+`appbar_scrolling_view_behavior` is a built-in `CoordinatorLayout.Behavior` that automatically sets the RecyclerView's top offset to equal the AppBarLayout's height. The content is never hidden under the toolbar.
+
+`BottomNavigationView` inside `CoordinatorLayout` makes `Snackbar` slide up above it automatically — without any extra code.
+
+---
+
+## 22. Navigation — Drawer, Bottom Nav, and Back Stack
+
+**NavigationDrawer:**  
+`DrawerLayout` is the root container. It holds the main content AND the drawer panel side by side. The drawer starts off-screen and slides in from the left when the user taps the hamburger icon.
+
+```java
+// Hamburger icon toggles the drawer:
+ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
+    this, drawerLayout, toolbar, R.string.open, R.string.close);
+drawerLayout.addDrawerListener(toggle);
+toggle.syncState(); // animates hamburger ↔ arrow based on drawer state
+```
+
+Returning `false` from the item selected listener prevents the tapped item from staying highlighted:
+```java
+navView.setNavigationItemSelectedListener(item -> {
+    startActivity(new Intent(this, MapActivity.class));
+    drawerLayout.closeDrawer(GravityCompat.START);
+    return false; // don't highlight this item as "selected"
+});
+```
+
+**BottomNavigationView:**  
+Three tabs — Feed, Map, My Posts. Since Map and My Posts are separate Activities (not Fragments), the selected tab is manually reset to Feed in `onResume()` whenever the user returns.
+
+---
+
+## 23. Gradle — The Build System
+
+**What it does:**  
+Gradle compiles your Java code, processes resources (XML, drawables), packages everything into an APK, and manages third-party library dependencies.
+
+**Version catalog (`gradle/libs.versions.toml`):**  
+All library versions are declared in one place:
+```toml
+[versions]
+firebase-bom = "32.7.0"
+workmanager = "2.9.1"
+glide = "4.16.0"
+
+[libraries]
+firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebase-bom" }
+work-runtime = { group = "androidx.work", name = "work-runtime", version.ref = "workmanager" }
+```
+
+In `app/build.gradle.kts`:
+```kotlin
+implementation(libs.work.runtime)
+implementation(platform(libs.firebase.bom)) // BOM manages all Firebase versions
+implementation(libs.firebase.database)
+```
+
+**`google-services` plugin:**  
+Reads `app/google-services.json` (downloaded from Firebase Console) and automatically injects your Firebase project's configuration (project ID, API keys, etc.) into the build. Without this file, Firebase cannot connect to your project.
+
+---
+
+## 24. Image Loading — Glide
+
+**The problem:**  
+Loading images from URLs involves network calls, decoding, memory management, and caching — all of which are complex to do correctly. `Glide` handles all of this in one line.
+
+```java
+Glide.with(context)
+    .load(item.getPhotoUrl())             // URL from Firebase Storage
+    .placeholder(R.drawable.ic_image_placeholder) // shown while loading
+    .into(imageView);                     // target view
+```
+
+Glide automatically:
+- Downloads on a background thread
+- Caches the decoded bitmap in memory (so scrolling is fast)
+- Caches the downloaded file on disk (so reopening is fast)
+- Cancels the load if the view is recycled (important in RecyclerView)
+
+For the user's profile photo in the nav drawer, Glide applies a circular crop:
+```java
+Glide.with(this).load(photoUrl).circleCrop().into(ivNavPhoto);
 ```
 
 ---
 
-## 25. BottomSheetDialog
+## 25. BottomSheetDialog — The Report Options Popup
 
-`BottomSheetDialog` is a Material component that slides a custom view up from the bottom of the screen — commonly used for contextual actions.
+When the user taps the `+` FAB, a `BottomSheetDialog` slides up from the bottom of the screen. This is a Material Design dialog that appears anchored to the bottom edge — less intrusive than a full dialog.
 
 ```java
-BottomSheetDialog sheet = new BottomSheetDialog(this);
-View view = getLayoutInflater().inflate(R.layout.dialog_report_options, null);
-sheet.setContentView(view);
-sheet.show();
+private void showReportDialog() {
+    BottomSheetDialog sheet = new BottomSheetDialog(this);
+    
+    // Manually inflate the layout (unlike Activities, we inflate manually here)
+    View view = getLayoutInflater().inflate(R.layout.dialog_report_options, null);
+    sheet.setContentView(view);
+    
+    // Set up click listeners on the cards inside:
+    view.findViewById(R.id.cardReportLost).setOnClickListener(v -> {
+        sheet.dismiss();
+        startActivity(new Intent(this, ReportLostActivity.class));
+    });
+    
+    sheet.show();
+}
 ```
 
-The layout is inflated manually and set as the content. The dialog handles the drag-to-dismiss gesture automatically.
+The sheet automatically:
+- Shows a drag handle at the top
+- Dismisses when the user swipes down or taps outside
+- Respects the system gesture navigation insets
+
+---
+
+## Putting It All Together — A Complete User Journey
+
+Here is a complete walkthrough of one user action — posting a lost item — and which concept handles each step:
+
+1. **User opens app** → `SplashActivity.onCreate()` reads `SessionManager` (SharedPreferences) → routes to `LoginActivity` or `MainActivity`
+
+2. **User logs in** → `LoginActivity` → Google Sign-In (Implicit Intent) → Firebase Auth → domain check → `UserRepository` writes to Firebase → `SessionManager.saveSession()` → explicit Intent to `MainActivity`
+
+3. **Feed loads** → `MainActivity` observes `FeedViewModel.getAllCachedItems()` (LiveData from Room) → `ItemRepository.syncFromFirebase()` pulls Firebase data → writes to Room on Executor thread → Room LiveData emits → RecyclerView adapter updates via DiffUtil
+
+4. **User taps +** → `BottomSheetDialog` shows → user taps "Report Lost" → explicit Intent to `ReportLostActivity`
+
+5. **User picks location** → explicit Intent to `LocationPickerActivity` (startActivityForResult) → user drops pin → `Geocoder` on background Thread → `setResult(RESULT_OK, intent)` → `onActivityResult` in `ReportLostActivity` receives lat/lng/address
+
+6. **User picks photo** → implicit Intent `ACTION_PICK` → Gallery ContentProvider returns URI → stored as `selectedPhotoUri`
+
+7. **User submits form** → `ReportViewModel.submitItem()` → `ItemRepository.postItem()` → Firebase Storage uploads photo → `itemRef.setValue(item)` writes to RTDB → Room cache updated on Executor thread → WorkManager notified → `MatchingService` started
+
+8. **Friend receives notification** → Firebase sends to topic `new_items` → `FCMService.onMessageReceived()` → `NotificationCompat.Builder` shows notification → user taps notification → deep-link Intent opens `ItemDetailActivity` → Firebase lookup → `UserRepository.getUser()` for poster name → `ItemAdapter` shows "Posted by: Manish"
 
 ---
 
