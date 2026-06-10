@@ -11,3 +11,8 @@
 local.properties
 app/google-services.json
 functions/node_modules/
+
+# Signing keystore — never commit
+*.jks
+*.keystore
+*.b64
